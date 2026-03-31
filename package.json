@@ -2,6 +2,9 @@
   "name": "firstregistrars-buildwise-workspace",
   "private": true,
   "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "build": "pnpm --filter @workspace/buildwise build",
     "dev": "pnpm --filter @workspace/buildwise dev",
