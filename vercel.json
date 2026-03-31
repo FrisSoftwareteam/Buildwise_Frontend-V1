@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pnpm build",
+  "outputDirectory": "buildwise/dist/public",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

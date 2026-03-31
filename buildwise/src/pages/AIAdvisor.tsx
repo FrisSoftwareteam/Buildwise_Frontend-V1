@@ -1,31 +1,49 @@
-import { useState } from "react";
-import { useListProjects, useAnalyzeProject } from "@workspace/api-client-react";
-import { Card, CardContent, Button, Badge } from "@/components/ui/shared";
+import { useEffect, useState } from "react";
+import { useListProjects, type AiAnalysisResult } from "@workspace/api-client-react";
+import { Card, Button, Badge } from "@/components/ui/shared";
 import { BrainCircuit, Loader2, CheckCircle2, AlertTriangle, Target, Lightbulb, TrendingUp } from "lucide-react";
+import { analyzeProjectWithGemini } from "@/lib/gemini-ai-advisor";
 
 export default function AIAdvisor() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');
+  const [result, setResult] = useState<AiAnalysisResult | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { data: projects } = useListProjects();
 
-  const analyzeMutation = useAnalyzeProject();
-  const analyzeError = (() => {
-    const error = analyzeMutation.error as
-      | { body?: { error?: string }; message?: string }
-      | undefined;
-    return error?.body?.error ?? error?.message ?? null;
-  })();
+  useEffect(() => {
+    const projectId = new URLSearchParams(window.location.search).get("projectId");
+    if (!projectId) return;
 
-  const handleAnalyze = () => {
+    const numericId = Number(projectId);
+    if (!Number.isNaN(numericId)) {
+      setSelectedProjectId(numericId);
+    }
+  }, []);
+
+  const handleAnalyze = async () => {
     if (!selectedProjectId) return;
-    analyzeMutation.mutate({
-      data: {
-        projectId: Number(selectedProjectId),
-        includeFinancial: true
-      }
-    });
-  };
 
-  const result = analyzeMutation.data;
+    const selectedProject = projects?.find((project) => project.id === Number(selectedProjectId));
+    if (!selectedProject) {
+      setAnalyzeError("Select a valid project before requesting analysis.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+
+    try {
+      const analysis = await analyzeProjectWithGemini(selectedProject);
+      setResult(analysis);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gemini analysis failed.";
+      setAnalyzeError(message);
+      setResult(null);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -56,10 +74,10 @@ export default function AIAdvisor() {
           </div>
           <Button 
             onClick={handleAnalyze} 
-            disabled={!selectedProjectId || analyzeMutation.isPending}
+            disabled={!selectedProjectId || isAnalyzing}
             className="h-12 px-8 bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/25 w-full md:w-auto"
           >
-            {analyzeMutation.isPending ? (
+            {isAnalyzing ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</>
             ) : (
               <><BrainCircuit className="w-4 h-4 mr-2" /> Generate Analysis</>
@@ -68,7 +86,7 @@ export default function AIAdvisor() {
         </div>
       </Card>
 
-      {analyzeMutation.isPending && (
+      {isAnalyzing && (
         <div className="py-24 flex flex-col items-center justify-center text-indigo-400 space-y-4">
           <div className="relative">
             <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-20 rounded-full animate-pulse"></div>
@@ -90,7 +108,7 @@ export default function AIAdvisor() {
         </Card>
       )}
 
-      {result && !analyzeMutation.isPending && (
+      {result && !isAnalyzing && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Main Summary Col */}
           <div className="lg:col-span-2 space-y-6">

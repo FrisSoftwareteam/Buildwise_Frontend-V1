@@ -2,9 +2,10 @@ import { useState, FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
+import { AuthProviderButtons } from "@/components/auth/AuthProviderButtons";
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, loginWithProvider, oauthProviders } = useAuth();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -158,6 +159,35 @@ export default function Login() {
               ) : "Sign In"}
             </button>
           </form>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-xs uppercase tracking-[0.3em] text-slate-500">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <AuthProviderButtons
+            availableProviders={oauthProviders}
+            disabled={loading}
+            onSelect={(provider) => {
+              setError("");
+              loginWithProvider(provider);
+            }}
+          />
+
+          <div className="text-center">
+            <span className="text-slate-500 text-sm">Need an account? </span>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setLocation("/signup");
+              }}
+              className="text-[#c4a747] hover:text-[#c4a747]/80 text-sm font-medium transition-colors"
+            >
+              Create one
+            </a>
+          </div>
 
         </div>
       </div>

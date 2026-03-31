@@ -3,6 +3,8 @@ dist/
 .DS_Store
 .env
 .env.*
+!.env.example
+!buildwise/.env.example
 
 buildwise/node_modules/
 buildwise/dist/

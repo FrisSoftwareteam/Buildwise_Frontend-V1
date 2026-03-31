@@ -5,12 +5,16 @@ import { getStatusColor, formatCurrency } from "@/lib/utils";
 import { ArrowLeft, Calendar, Flag, Activity, Loader2, KanbanSquare, Pencil } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { getProjectDocumentation, saveProjectDocumentation } from "@/lib/project-documentation";
 
 export default function ProjectDetail() {
   const { id } = useParams();
   const projectId = parseInt(id || '0');
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [documentation, setDocumentation] = useState("");
+  const [docSaved, setDocSaved] = useState(false);
   
   const { data: project, isLoading: projLoading } = useGetProject(projectId);
   const { data: tasks, isLoading: tasksLoading } = useListTasks(projectId);
@@ -22,6 +26,12 @@ export default function ProjectDetail() {
       },
     },
   });
+
+  useEffect(() => {
+    if (!projectId) return;
+    setDocumentation(getProjectDocumentation(projectId));
+    setDocSaved(false);
+  }, [projectId]);
 
   if (projLoading) return <div className="p-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" /></div>;
   if (!project) return <div className="p-12 text-center text-red-400">Project not found</div>;
@@ -95,6 +105,45 @@ export default function ProjectDetail() {
               Analyze with AI Advisor
             </Button>
           </Link>
+
+          <Card className="p-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Project Documentation</h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  Paste project requirements, process notes, or business context here for this specific project.
+                </p>
+              </div>
+              {docSaved && (
+                <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
+                  Saved
+                </Badge>
+              )}
+            </div>
+            <Textarea
+              value={documentation}
+              onChange={(event) => {
+                setDocumentation(event.target.value);
+                setDocSaved(false);
+              }}
+              placeholder="Paste the project documentation here..."
+              className="min-h-64 border-border bg-input/50 text-sm text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-primary"
+            />
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">
+                The AI Advisor will include this documentation in its analysis for this project.
+              </p>
+              <Button
+                type="button"
+                onClick={() => {
+                  saveProjectDocumentation(project.id, documentation);
+                  setDocSaved(true);
+                }}
+              >
+                Save Documentation
+              </Button>
+            </div>
+          </Card>
         </div>
 
         {/* Right Col - Mini Board */}

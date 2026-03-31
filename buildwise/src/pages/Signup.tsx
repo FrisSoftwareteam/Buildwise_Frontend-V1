@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Lock, Mail, User, Building2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { AuthProviderButtons } from "@/components/auth/AuthProviderButtons";
 
 const DEPARTMENTS = [
   "Management",
@@ -23,7 +24,7 @@ const ROLES = [
 ];
 
 export default function Signup() {
-  const { signup } = useAuth();
+  const { signup, loginWithProvider, oauthProviders } = useAuth();
   const [, setLocation] = useLocation();
 
   const [form, setForm] = useState({
@@ -298,6 +299,21 @@ export default function Signup() {
               ) : "Create Account"}
             </button>
           </form>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-xs uppercase tracking-[0.3em] text-slate-500">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <AuthProviderButtons
+            availableProviders={oauthProviders}
+            disabled={loading}
+            onSelect={(provider) => {
+              setError("");
+              loginWithProvider(provider);
+            }}
+          />
 
           <div className="text-center">
             <span className="text-slate-500 text-sm">Already have an account? </span>

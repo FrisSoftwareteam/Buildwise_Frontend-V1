@@ -19,6 +19,7 @@ import Team from "@/pages/Team";
 import AIAdvisor from "@/pages/AIAdvisor";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import OAuthCallback from "@/pages/OAuthCallback";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ function ProtectedRouter() {
       {/* Auth routes — always accessible */}
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/auth/callback" component={OAuthCallback} />
 
       {/* Protected routes */}
       <Route>
