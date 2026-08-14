@@ -1,6 +1,6 @@
 import type { AiAnalysisResult, Project } from "@workspace/api-client-react";
 import firstRegistrarsProcessManual from "../../../Firstregistrarsprocess.md?raw";
-import { getProjectDocumentation } from "@/lib/project-documentation";
+import { getProjectDocumentsForAi } from "@/lib/project-required-documents";
 
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
@@ -75,15 +75,16 @@ const analysisSchema = {
   required: ["summary", "insights", "suggestions", "risks"],
 } as const;
 
-function buildPrompt(project: Project): string {
-  const projectDocumentation = getProjectDocumentation(project.id);
+async function buildPrompt(project: Project): Promise<string> {
+  const projectDocumentation = await getProjectDocumentsForAi(project.id, project.documents);
 
   return [
     "You are an AI business advisor for a construction and project management platform.",
     "Analyze the project using the structured project data and the First Registrars operations manual provided below.",
     "Judge how operationally vital or strategically relevant this project is to First Registrars.",
     "Consider whether the project supports critical registry workflows such as shareholder records, dividends, share transfers, probate, KYC/compliance, customer service, reporting, integrations, or core IT operations.",
-    "Use the project documentation section when it is provided. Treat it as the most detailed business context for the project.",
+    "Use the required project documents when they are provided. Treat Project Scope, Project Manual, Project Technical Documentation, and Project Sign Off Document as the most detailed business context for the project.",
+    "If any of the four required documents are missing, say so clearly.",
     "If the project appears weakly connected to the manual, say so clearly and reflect that in the recommendation, insights, risks, and suggestions.",
     "If the data is sparse, make conservative assumptions and mention them briefly in the summary.",
     "Keep the tone executive, practical, and concise.",
@@ -92,8 +93,8 @@ function buildPrompt(project: Project): string {
     "First Registrars operations manual:",
     firstRegistrarsProcessManual,
     "",
-    "Project documentation:",
-    projectDocumentation || "No project-specific documentation has been added yet.",
+    "Required project documents:",
+    projectDocumentation || "None of the four required project documents have been uploaded yet.",
     "",
     "Project data:",
     JSON.stringify(
@@ -176,7 +177,7 @@ export async function analyzeProjectWithGemini(project: Project): Promise<AiAnal
     body: JSON.stringify({
       contents: [
         {
-          parts: [{ text: buildPrompt(project) }],
+          parts: [{ text: await buildPrompt(project) }],
         },
       ],
       generationConfig: {

@@ -7,13 +7,12 @@ import { ArrowLeft, Flag, Activity, Loader2, KanbanSquare, Pencil, Users, BrainC
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { getProjectDocumentation, saveProjectDocumentation } from "@/lib/project-documentation";
 import { useRefreshQueries } from "@/lib/refresh-queries";
 import { useAuth } from "@/context/AuthContext";
 import { canCreateSoftwareProduct, canSetProductLifecycle, canUseAiAdvisor, canWorkBoard } from "@/lib/software-roles";
 import { productLifecyclePatch } from "@/lib/project-lifecycle";
 import { ContributorsEditor } from "@/components/ContributorsEditor";
+import { ProjectRequiredDocuments } from "@/components/ProjectRequiredDocuments";
 import { formatContributor, sanitizeContributors, type ProjectContributor } from "@/lib/developer-work";
 import { formatMoney, monthsActive, totalExpense } from "@/lib/project-cost";
 import { TaskTimelineBadge } from "@/components/TaskTimelineBadge";
@@ -28,8 +27,6 @@ export default function ProjectDetail() {
   const projectId = parseInt(id || '0');
   const canEditDevelopers = canWorkBoard(user?.role);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [documentation, setDocumentation] = useState("");
-  const [docSaved, setDocSaved] = useState(false);
   const [contributors, setContributors] = useState<ProjectContributor[]>([]);
   
   const projectQuery = useGetProject(projectId);
@@ -45,12 +42,6 @@ export default function ProjectDetail() {
       },
     },
   });
-
-  useEffect(() => {
-    if (!projectId) return;
-    setDocumentation(getProjectDocumentation(projectId));
-    setDocSaved(false);
-  }, [projectId]);
 
   useEffect(() => {
     setContributors(
@@ -86,7 +77,7 @@ export default function ProjectDetail() {
       </div>
       {showAi && (
         <p className="text-sm text-slate-400 -mt-3">
-          Generate an AI analysis from this product’s details, costs, developers, and documentation.
+          Generate an AI analysis from this product’s details, costs, developers, and required documents.
         </p>
       )}
 
@@ -258,46 +249,14 @@ export default function ProjectDetail() {
             )}
           </Card>
           
-          {showAi && (
           <Card className="p-6">
-            <div className="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-white">Project Documentation</h3>
-                <p className="text-sm text-slate-400 mt-1">
-                  Paste project requirements, process notes, or business context here for this specific project.
-                </p>
-              </div>
-              {docSaved && (
-                <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
-                  Saved
-                </Badge>
-              )}
-            </div>
-            <Textarea
-              value={documentation}
-              onChange={(event) => {
-                setDocumentation(event.target.value);
-                setDocSaved(false);
-              }}
-              placeholder="Paste the project documentation here..."
-              className="min-h-64 border-border bg-input/50 text-sm text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-primary"
+            <ProjectRequiredDocuments
+              projectId={project.id}
+              documents={project.documents}
+              canUpload={canEdit}
+              onChanged={() => refresh(projectQuery.queryKey)}
             />
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <p className="text-xs text-slate-500">
-                The AI Advisor will include this documentation in its analysis for this project.
-              </p>
-              <Button
-                type="button"
-                onClick={() => {
-                  saveProjectDocumentation(project.id, documentation);
-                  setDocSaved(true);
-                }}
-              >
-                Save Documentation
-              </Button>
-            </div>
           </Card>
-          )}
         </div>
 
         {/* Right Col - Mini Board */}

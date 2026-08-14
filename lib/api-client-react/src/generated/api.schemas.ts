@@ -117,8 +117,28 @@ export interface Project {
   ownerId?: number | null;
   vendorId?: number | null;
   contributors?: ProjectContributor[];
+  documents?: ProjectDocument[];
   createdAt: string;
   updatedAt: string;
+}
+
+export type ProjectDocumentKind =
+  (typeof ProjectDocumentKind)[keyof typeof ProjectDocumentKind];
+
+export const ProjectDocumentKind = {
+  scope: "scope",
+  manual: "manual",
+  technical: "technical",
+  sign_off: "sign_off",
+} as const;
+
+export interface ProjectDocument {
+  kind: ProjectDocumentKind;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  storageName?: string;
+  uploadedAt: string;
 }
 
 export type ProjectWorkPart = (typeof ProjectWorkPart)[keyof typeof ProjectWorkPart];
@@ -551,6 +571,7 @@ export interface CreateVendorProjectBody {
   description?: string | null;
   estimatedValue?: number | null;
   handoverDate?: string | null;
+  projectId?: number | null;
 }
 
 export type UpdateVendorProjectBodyStage =
