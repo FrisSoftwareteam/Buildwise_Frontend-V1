@@ -95,7 +95,7 @@ export function Dialog({ isOpen, onClose, title, children }: { isOpen: boolean, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className="z-50 w-full max-w-lg scale-100 gap-4 border border-border bg-card p-6 opacity-100 shadow-2xl rounded-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto scale-100 gap-4 border border-border bg-card p-6 opacity-100 shadow-2xl rounded-2xl animate-in fade-in zoom-in-95 duration-200">
         <div className="flex flex-col space-y-1.5 text-center sm:text-left mb-4">
           <h2 className="text-xl font-semibold leading-none tracking-tight font-display">{title}</h2>
         </div>

@@ -3,20 +3,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCreateUser, useListUsers, useUpdateUser } from "@workspace/api-client-react";
 import { Avatar, Badge, Button, Card, Dialog, Input } from "@/components/ui/shared";
 import { getStatusColor } from "@/lib/utils";
+import { SOFTWARE_ROLES, canManageSoftwareTeam, softwareRole, softwareRoleLabel } from "@/lib/software-roles";
+import { useAuth } from "@/context/AuthContext";
 import { Briefcase, Mail, Pencil, Plus, Search, Users } from "lucide-react";
 import { format } from "date-fns";
 
-const roleOptions = [
-  { value: "manager", label: "Project Manager" },
-  { value: "admin", label: "Portfolio Admin" },
-  { value: "developer", label: "Software Engineer" },
-  { value: "viewer", label: "Stakeholder" },
-] as const;
+const roleOptions = SOFTWARE_ROLES;
 
-type TeamRole = (typeof roleOptions)[number]["value"];
-
-function getRoleLabel(role: TeamRole) {
-  return roleOptions.find((option) => option.value === role)?.label ?? role;
+function getRoleLabel(role: string) {
+  return softwareRoleLabel(role);
 }
 
 function getInitials(name: string) {
@@ -29,6 +24,8 @@ function getInitials(name: string) {
 }
 
 export default function Team() {
+  const { user: currentUser } = useAuth();
+  const canManage = canManageSoftwareTeam(currentUser?.role);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<number | null>(null);
@@ -95,13 +92,15 @@ export default function Team() {
               placeholder="Search team members..."
             />
           </div>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Team Member
-          </Button>
+          {canManage && (
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Team Member
+            </Button>
+          )}
         </div>
       </div>
 
@@ -157,15 +156,17 @@ export default function Team() {
 
             <div className="px-6 py-3 bg-slate-900/50 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
               <span>Added {format(new Date(user.createdAt), "MMM yyyy")}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
-                onClick={() => setEditingMemberId(user.id)}
-              >
-                <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                Edit Member
-              </Button>
+              {canManage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                  onClick={() => setEditingMemberId(user.id)}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                  Edit Member
+                </Button>
+              )}
             </div>
           </Card>
         ))}
@@ -179,10 +180,12 @@ export default function Team() {
             <p className="mt-2 text-sm text-slate-400">
               Add project management team members here so they appear in the directory.
             </p>
-            <Button onClick={() => setIsCreateOpen(true)} className="mt-5">
-              <Plus className="w-4 h-4 mr-2" />
-              Add First Member
-            </Button>
+            {canManage && (
+              <Button onClick={() => setIsCreateOpen(true)} className="mt-5">
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Member
+              </Button>
+            )}
           </div>
         </Card>
       ) : null}
@@ -198,7 +201,7 @@ export default function Team() {
               data: {
                 name: fd.get("name") as string,
                 email: fd.get("email") as string,
-                role: fd.get("role") as "admin" | "manager" | "developer" | "viewer",
+                role: fd.get("role") as "admin" | "vendor" | "manager" | "developer",
                 department: fd.get("department") as string,
                 avatarUrl: (fd.get("avatarUrl") as string) || undefined,
               },
@@ -270,7 +273,7 @@ export default function Team() {
                 data: {
                   name: fd.get("name") as string,
                   email: fd.get("email") as string,
-                  role: fd.get("role") as "admin" | "manager" | "developer" | "viewer",
+                  role: fd.get("role") as "admin" | "vendor" | "manager" | "developer",
                   department: fd.get("department") as string,
                   avatarUrl: (fd.get("avatarUrl") as string) || undefined,
                 },
@@ -292,7 +295,9 @@ export default function Team() {
                 <label className="text-sm font-medium text-slate-300 mb-1.5 block">Role</label>
                 <select
                   name="role"
-                  defaultValue={editingMember.role}
+                  defaultValue={SOFTWARE_ROLES.some((option) => option.value === editingMember.role)
+                    ? editingMember.role
+                    : softwareRole(editingMember.role)}
                   className="w-full h-10 rounded-lg border border-border bg-input/50 px-3 text-sm text-white focus:ring-2 focus:ring-primary focus:outline-none"
                 >
                   {roleOptions.map((option) => (

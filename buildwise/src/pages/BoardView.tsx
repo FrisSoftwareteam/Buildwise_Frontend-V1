@@ -1,8 +1,12 @@
 import { type Task, useCreateTask, useDeleteTask, useListTasks, useListProjects, useUpdateTask } from "@workspace/api-client-react";
 import { Card, Badge, Button, Dialog, Input } from "@/components/ui/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Trello, MoreHorizontal, Trash2 } from "lucide-react";
+import { Loader2, Trello, MoreHorizontal, Trash2, CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRefreshQueries } from "@/lib/refresh-queries";
+import { useAuth } from "@/context/AuthContext";
+import { canWorkBoard } from "@/lib/software-roles";
+import { TaskTimelineBadge } from "@/components/TaskTimelineBadge";
 
 const BOARD_COUMNS = [
   { id: 'backlog', label: 'Backlog', color: 'border-slate-500' },
@@ -13,9 +17,12 @@ const BOARD_COUMNS = [
 ];
 
 export default function BoardView() {
+  const { user } = useAuth();
+  const canWork = canWorkBoard(user?.role);
   const { data: projects } = useListProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [timelineTask, setTimelineTask] = useState<Task | null>(null);
   const [defaultStatus, setDefaultStatus] = useState("backlog");
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
@@ -23,26 +30,34 @@ export default function BoardView() {
   
   // Default to first project if none selected
   const activeProjectId = selectedProjectId || projects?.[0]?.id;
-  const { data: tasks, isLoading } = useListTasks(activeProjectId || 0, { query: { enabled: !!activeProjectId } });
+  const tasksQuery = useListTasks(activeProjectId || 0, { query: { enabled: !!activeProjectId } });
+  const { data: tasks, isLoading } = tasksQuery;
+  const refresh = useRefreshQueries();
   const createTaskMutation = useCreateTask({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async () => {
         setIsCreateOpen(false);
-        window.location.reload();
+        await refresh(tasksQuery.queryKey);
       },
     },
   });
   const updateTaskMutation = useUpdateTask({
     mutation: {
-      onError: () => {
-        window.location.reload();
+      onSuccess: async () => {
+        await refresh(tasksQuery.queryKey);
+      },
+      onError: async () => {
+        await refresh(tasksQuery.queryKey);
       },
     },
   });
   const deleteTaskMutation = useDeleteTask({
     mutation: {
-      onError: () => {
-        window.location.reload();
+      onSuccess: async () => {
+        await refresh(tasksQuery.queryKey);
+      },
+      onError: async () => {
+        await refresh(tasksQuery.queryKey);
       },
     },
   });
@@ -113,8 +128,9 @@ export default function BoardView() {
         <div>
           <h2 className="text-2xl font-bold font-display text-white flex items-center">
             <Trello className="w-6 h-6 mr-3 text-primary" />
-            Global Board
+            Sprint board
           </h2>
+          <p className="text-slate-400 text-sm mt-1">Kanban for a software product. Issuer meetings are under Governance.</p>
         </div>
         <div>
           <select 
@@ -175,7 +191,7 @@ export default function BoardView() {
                     {colTasks.map((task) => (
                       <Card
                         key={task.id}
-                        draggable
+                        draggable={canWork}
                         onDragStart={() => handleDragStart(task.id)}
                         onDragEnd={handleDragEnd}
                         className={`p-3 bg-card hover:bg-slate-800 border-white/5 hover:border-primary/30 transition-all shadow-md group cursor-grab active:cursor-grabbing ${
@@ -186,6 +202,7 @@ export default function BoardView() {
                           <Badge variant="outline" className="text-[10px] uppercase text-slate-400 border-slate-700 bg-slate-800">
                             {task.type}
                           </Badge>
+                          {canWork && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
@@ -195,7 +212,11 @@ export default function BoardView() {
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onSelect={() => setTimelineTask(task)}>
+                                <CalendarClock className="w-4 h-4" />
+                                Set timeline
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-red-400 focus:text-red-300"
                                 onSelect={() => handleDeleteTask(task.id)}
@@ -205,8 +226,12 @@ export default function BoardView() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
+                          )}
                         </div>
-                        <h4 className="text-sm font-medium text-white mb-3">{task.title}</h4>
+                        <h4 className="text-sm font-medium text-white mb-2">{task.title}</h4>
+                        <div className="mb-3">
+                          <TaskTimelineBadge dueDate={task.dueDate} status={task.status} />
+                        </div>
                         
                         <div className="flex justify-between items-center mt-2">
                           <div className="flex -space-x-2">
@@ -219,6 +244,7 @@ export default function BoardView() {
                       </Card>
                     ))}
                     
+                    {canWork && (
                     <Button
                       variant="ghost"
                       className="w-full text-slate-500 hover:text-white hover:bg-white/5 border border-dashed border-white/10 justify-start"
@@ -227,6 +253,7 @@ export default function BoardView() {
                     >
                       + Add Task
                     </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -253,6 +280,7 @@ export default function BoardView() {
                 priority: fd.get("priority") as "low" | "medium" | "high" | "critical",
                 type: fd.get("type") as "story" | "task" | "bug" | "epic" | "subtask",
                 storyPoints: fd.get("storyPoints") ? Number(fd.get("storyPoints")) : undefined,
+                dueDate: fd.get("dueDate") as string,
                 label: (fd.get("label") as string) || undefined,
               },
             });
@@ -321,6 +349,11 @@ export default function BoardView() {
             </div>
           </div>
           <div>
+            <label className="text-sm font-medium text-slate-300 mb-1.5 block">Timeline</label>
+            <Input name="dueDate" type="date" required />
+            <p className="text-[11px] text-slate-500 mt-1">If this date is missed, project managers are emailed a reminder.</p>
+          </div>
+          <div>
             <label className="text-sm font-medium text-slate-300 mb-1.5 block">Label</label>
             <Input name="label" placeholder="e.g. backend" />
           </div>
@@ -331,6 +364,37 @@ export default function BoardView() {
             <Button type="submit" isLoading={createTaskMutation.isPending} disabled={!activeProjectId}>
               Create Task
             </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog isOpen={!!timelineTask} onClose={() => setTimelineTask(null)} title="Set task timeline">
+        <form
+          key={timelineTask?.id}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!timelineTask) return;
+            const fd = new FormData(e.currentTarget);
+            updateTaskMutation.mutate({
+              id: timelineTask.id,
+              data: {
+                dueDate: fd.get("dueDate") as string,
+              },
+            });
+            setTimelineTask(null);
+          }}
+          className="space-y-4"
+        >
+          <p className="text-sm text-slate-400">{timelineTask?.title}</p>
+          <div>
+            <label className="text-sm font-medium text-slate-300 mb-1.5 block">Timeline</label>
+            <Input name="dueDate" type="date" required defaultValue={timelineTask?.dueDate || ""} />
+          </div>
+          <div className="pt-2 flex justify-end gap-3">
+            <Button type="button" variant="ghost" onClick={() => setTimelineTask(null)}>
+              Cancel
+            </Button>
+            <Button type="submit">Save timeline</Button>
           </div>
         </form>
       </Dialog>

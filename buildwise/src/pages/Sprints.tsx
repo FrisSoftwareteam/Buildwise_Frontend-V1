@@ -6,10 +6,15 @@ import {
   useUpdateSprint,
 } from "@workspace/api-client-react";
 import { Badge, Button, Card, Dialog, Input } from "@/components/ui/shared";
-import { CalendarRange, Flag, Loader2, Plus, TimerReset } from "lucide-react";
+import { productKindLabel } from "@/lib/product-kind";
 import { format } from "date-fns";
+import { useRefreshQueries } from "@/lib/refresh-queries";
+import { useAuth } from "@/context/AuthContext";
+import { canPlanSprints } from "@/lib/software-roles";
 
 export default function Sprints() {
+  const { user } = useAuth();
+  const canPlan = canPlanSprints(user?.role);
   const { data: projects, isLoading: projectsLoading } = useListProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -17,23 +22,25 @@ export default function Sprints() {
   const activeProjectId = selectedProjectId || projects?.[0]?.id;
   const activeProject = projects?.find((project) => project.id === activeProjectId) || null;
 
-  const { data: sprints, isLoading: sprintsLoading } = useListSprints(activeProjectId || 0, {
+  const sprintsQuery = useListSprints(activeProjectId || 0, {
     query: { enabled: !!activeProjectId },
   });
+  const { data: sprints, isLoading: sprintsLoading } = sprintsQuery;
+  const refresh = useRefreshQueries();
 
   const createSprintMutation = useCreateSprint({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async () => {
         setIsCreateOpen(false);
-        window.location.reload();
+        await refresh(sprintsQuery.queryKey);
       },
     },
   });
 
   const updateSprintMutation = useUpdateSprint({
     mutation: {
-      onSuccess: () => {
-        window.location.reload();
+      onSuccess: async () => {
+        await refresh(sprintsQuery.queryKey);
       },
     },
   });
@@ -64,7 +71,7 @@ export default function Sprints() {
             <TimerReset className="w-6 h-6 text-primary" />
             Sprint Management
           </h2>
-          <p className="text-slate-400 text-sm">Plan, activate, and close sprints for the selected project.</p>
+          <p className="text-slate-400 text-sm">Plan, activate, and close sprints for the selected software product.</p>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -80,10 +87,12 @@ export default function Sprints() {
             ))}
           </select>
 
-          <Button onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Sprint
-          </Button>
+          {canPlan && (
+            <Button onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Sprint
+            </Button>
+          )}
         </div>
       </div>
 
@@ -93,7 +102,7 @@ export default function Sprints() {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10">
-                  {activeProject.type}
+                  {productKindLabel(activeProject.type)}
                 </Badge>
                 <Badge variant="outline" className="border-slate-600 text-slate-300 bg-slate-900/50">
                   {activeProject.status.replace("_", " ")}
@@ -145,6 +154,7 @@ export default function Sprints() {
                   </div>
                 </div>
 
+                {canPlan ? (
                 <select
                   value={sprint.status}
                   onChange={(e) =>
@@ -165,6 +175,7 @@ export default function Sprints() {
                   <option value="active">Active</option>
                   <option value="completed">Completed</option>
                 </select>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-white/5">
@@ -197,10 +208,12 @@ export default function Sprints() {
           <p className="text-slate-400 mt-2 max-w-xl mx-auto">
             Create a sprint to group upcoming work, track delivery windows, and move the project into a clearer execution cycle.
           </p>
-          <Button className="mt-5" onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create First Sprint
-          </Button>
+          {canPlan && (
+            <Button className="mt-5" onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create First Sprint
+            </Button>
+          )}
         </Card>
       )}
 

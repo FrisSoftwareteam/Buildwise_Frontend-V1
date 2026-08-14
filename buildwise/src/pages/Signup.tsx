@@ -2,7 +2,8 @@ import { useState, FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Lock, Mail, User, Building2, AlertCircle, CheckCircle2 } from "lucide-react";
-import { AuthProviderButtons } from "@/components/auth/AuthProviderButtons";
+import { AuthProviderButtons, hasVisibleProviders } from "@/components/auth/AuthProviderButtons";
+import { SOFTWARE_ROLES } from "@/lib/software-roles";
 
 const DEPARTMENTS = [
   "Management",
@@ -16,12 +17,7 @@ const DEPARTMENTS = [
   "Registry Services",
 ];
 
-const ROLES = [
-  { value: "admin", label: "Administrator" },
-  { value: "manager", label: "Project Manager" },
-  { value: "developer", label: "Team Member" },
-  { value: "viewer", label: "Viewer (Read Only)" },
-];
+const ROLES = SOFTWARE_ROLES;
 
 export default function Signup() {
   const { signup, loginWithProvider, oauthProviders } = useAuth();
@@ -113,14 +109,14 @@ export default function Signup() {
               <span className="text-[#c4a747]">BuildWise</span>
             </h1>
             <p className="mt-4 text-slate-400 leading-relaxed">
-              Create your account to collaborate on projects, track vendor pipelines, and access AI-powered business insights.
+              Create your account to collaborate on software products, issuer meetings, vendor pipelines, and AI-powered insights.
             </p>
           </div>
 
           <div className="space-y-3">
             {[
-              "Manage internal and vendor projects",
-              "Track project stages and completion",
+              "Build web, desktop, and enterprise products",
+              "Run issuer AGMs in a separate workspace",
               "AI business analysis and advice",
               "Real-time team collaboration",
             ].map(item => (
@@ -300,20 +296,24 @@ export default function Signup() {
             </button>
           </form>
 
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs uppercase tracking-[0.3em] text-slate-500">or</span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
+          {hasVisibleProviders(oauthProviders) && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs uppercase tracking-[0.3em] text-slate-500">or</span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
 
-          <AuthProviderButtons
-            availableProviders={oauthProviders}
-            disabled={loading}
-            onSelect={(provider) => {
-              setError("");
-              loginWithProvider(provider);
-            }}
-          />
+              <AuthProviderButtons
+                availableProviders={oauthProviders}
+                disabled={loading}
+                onSelect={(provider) => {
+                  setError("");
+                  loginWithProvider(provider);
+                }}
+              />
+            </>
+          )}
 
           <div className="text-center">
             <span className="text-slate-500 text-sm">Already have an account? </span>

@@ -1,28 +1,47 @@
 import { useParams } from "wouter";
-import { useGetProject, useListTasks, useUpdateProject } from "@workspace/api-client-react";
+import { useGetProject, useListTasks, useListUsers, useUpdateProject } from "@workspace/api-client-react";
 import { Card, Badge, Button, Dialog, Input } from "@/components/ui/shared";
 import { getStatusColor, formatCurrency } from "@/lib/utils";
-import { ArrowLeft, Calendar, Flag, Activity, Loader2, KanbanSquare, Pencil } from "lucide-react";
+import { productKindLabel, PRODUCT_KINDS, PRODUCT_STATUSES, isContinuousKind, isProductClosed, productStatusLabel } from "@/lib/product-kind";
+import { ArrowLeft, Flag, Activity, Loader2, KanbanSquare, Pencil, Users, BrainCircuit, PauseCircle, CheckCircle2, Play } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { getProjectDocumentation, saveProjectDocumentation } from "@/lib/project-documentation";
+import { useRefreshQueries } from "@/lib/refresh-queries";
+import { useAuth } from "@/context/AuthContext";
+import { canCreateSoftwareProduct, canSetProductLifecycle, canUseAiAdvisor, canWorkBoard } from "@/lib/software-roles";
+import { productLifecyclePatch } from "@/lib/project-lifecycle";
+import { ContributorsEditor } from "@/components/ContributorsEditor";
+import { formatContributor, sanitizeContributors, type ProjectContributor } from "@/lib/developer-work";
+import { formatMoney, monthsActive, totalExpense } from "@/lib/project-cost";
+import { TaskTimelineBadge } from "@/components/TaskTimelineBadge";
 
 export default function ProjectDetail() {
+  const { user } = useAuth();
+  const canEdit = canCreateSoftwareProduct(user?.role);
+  const canLifecycle = canSetProductLifecycle(user?.role);
+  const showBoard = canWorkBoard(user?.role);
+  const showAi = canUseAiAdvisor(user?.role);
   const { id } = useParams();
   const projectId = parseInt(id || '0');
+  const canEditDevelopers = canWorkBoard(user?.role);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [documentation, setDocumentation] = useState("");
   const [docSaved, setDocSaved] = useState(false);
+  const [contributors, setContributors] = useState<ProjectContributor[]>([]);
   
-  const { data: project, isLoading: projLoading } = useGetProject(projectId);
+  const projectQuery = useGetProject(projectId);
+  const { data: project, isLoading: projLoading } = projectQuery;
   const { data: tasks, isLoading: tasksLoading } = useListTasks(projectId);
+  const { data: teamMembers } = useListUsers();
+  const refresh = useRefreshQueries();
   const updateProjectMutation = useUpdateProject({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async () => {
         setIsEditOpen(false);
-        window.location.reload();
+        await refresh(projectQuery.queryKey);
       },
     },
   });
@@ -33,30 +52,100 @@ export default function ProjectDetail() {
     setDocSaved(false);
   }, [projectId]);
 
-  if (projLoading) return <div className="p-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" /></div>;
-  if (!project) return <div className="p-12 text-center text-red-400">Project not found</div>;
+  useEffect(() => {
+    setContributors(
+      (project?.contributors || []).map((contributor) => ({
+        name: contributor.name,
+        userId: contributor.userId ?? null,
+        parts: (contributor.parts || []) as ProjectContributor["parts"],
+      })),
+    );
+  }, [project]);
 
-  const statuses = ['backlog', 'todo', 'in_progress', 'in_review', 'done'];
+  if (projLoading) return <div className="p-12 text-center"><Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" /></div>;
+  if (!project) return <div className="p-12 text-center text-red-400">Software product not found</div>;
+
+  const continuous = isContinuousKind(project.type);
+  const closed = isProductClosed(project.status);
+  const continuousActive = continuous && !closed;
 
   return (
     <div className="space-y-6">
-      <Link href="/projects" className="inline-flex items-center text-sm text-slate-400 hover:text-white transition-colors">
-        <ArrowLeft className="w-4 h-4 mr-2" /> Back to Projects
-      </Link>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <Link href="/projects" className="inline-flex items-center text-sm text-slate-400 hover:text-white transition-colors">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to software products
+        </Link>
+        {showAi && (
+          <Link href={`/ai-advisor?projectId=${project.id}`}>
+            <Button className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none">
+              <BrainCircuit className="w-4 h-4 mr-2" />
+              Analyze with AI Advisor
+            </Button>
+          </Link>
+        )}
+      </div>
+      {showAi && (
+        <p className="text-sm text-slate-400 -mt-3">
+          Generate an AI analysis from this product’s details, costs, developers, and documentation.
+        </p>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Col - Details */}
         <div className="w-full lg:w-1/3 space-y-6">
           <Card className="p-6">
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-end mb-4 gap-2 flex-wrap">
+            {canLifecycle && project.status !== "inactive" && (
+              <Button
+                variant="outline"
+                size="sm"
+                isLoading={updateProjectMutation.isPending}
+                onClick={() => updateProjectMutation.mutate({
+                  id: project.id,
+                  data: productLifecyclePatch("inactive", project),
+                })}
+              >
+                <PauseCircle className="w-4 h-4 mr-2" />
+                Mark inactive
+              </Button>
+            )}
+            {canLifecycle && project.status !== "completed" && (
+              <Button
+                size="sm"
+                isLoading={updateProjectMutation.isPending}
+                onClick={() => updateProjectMutation.mutate({
+                  id: project.id,
+                  data: productLifecyclePatch("completed", project),
+                })}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Mark completed
+              </Button>
+            )}
+            {canLifecycle && closed && (
+              <Button
+                variant="outline"
+                size="sm"
+                isLoading={updateProjectMutation.isPending}
+                onClick={() => updateProjectMutation.mutate({
+                  id: project.id,
+                  data: productLifecyclePatch("in_progress", project),
+                })}
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Reactivate
+              </Button>
+            )}
+            {canEdit && (
               <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)}>
                 <Pencil className="w-4 h-4 mr-2" />
                 Edit Project
               </Button>
+            )}
             </div>
             <div className="flex items-center gap-3 mb-4">
-              <Badge variant="custom" className={getStatusColor(project.status)}>
-                {project.status.replace('_', ' ').toUpperCase()}
+              <Badge variant="custom" className={continuousActive ? "bg-cyan-500/15 text-cyan-200" : getStatusColor(project.status)}>
+                {productStatusLabel(project).toUpperCase()}
               </Badge>
               <Badge variant="outline" className={
                 project.priority === 'critical' ? 'border-red-500/50 text-red-400' :
@@ -71,41 +160,105 @@ export default function ProjectDetail() {
             <p className="text-slate-400 mb-6">{project.description || "No description provided."}</p>
             
             <div className="space-y-4 py-4 border-t border-white/5">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500 text-sm flex items-center"><Activity className="w-4 h-4 mr-2"/> Progress</span>
-                <span className="text-white font-medium">{project.completionRate}%</span>
-              </div>
-              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${project.completionRate}%` }} />
-              </div>
+              {continuousActive ? (
+                <div>
+                  <p className="text-sm text-cyan-200 font-medium">Ongoing — this work does not complete</p>
+                  <p className="text-xs text-slate-500 mt-1">Hosting, SSL, and cloud security stay open as continuous operations until marked inactive or completed.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm flex items-center"><Activity className="w-4 h-4 mr-2"/> Progress</span>
+                    <span className="text-white font-medium">{project.completionRate}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${project.completionRate}%` }} />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4 py-4 border-t border-white/5">
               <div>
-                <p className="text-xs text-slate-500 mb-1">Type</p>
-                <p className="text-sm text-white capitalize">{project.type}</p>
+                <p className="text-xs text-slate-500 mb-1">Product kind</p>
+                <p className="text-sm text-white">{productKindLabel(project.type)}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-1">Budget</p>
-                <p className="text-sm text-white">{formatCurrency(project.budget)}</p>
+                <p className="text-xs text-slate-500 mb-1">Initial cost</p>
+                <p className="text-sm text-white">{formatMoney(project.initialCost ?? project.budget)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Monthly cost</p>
+                <p className="text-sm text-white">{formatMoney(project.monthlyCost)}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-500 mb-1">Country</p>
                 <p className="text-sm text-white">{project.country || 'Global'}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-1">Start Date</p>
-                <p className="text-sm text-white">{project.startDate ? format(new Date(project.startDate), 'MMM d, yyyy') : 'TBD'}</p>
+                <p className="text-xs text-slate-500 mb-1">Started</p>
+                <p className="text-sm text-white">{project.startDate ? format(new Date(project.startDate.includes("T") ? project.startDate : `${project.startDate}T12:00:00`), 'MMM d, yyyy') : '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Completed</p>
+                <p className="text-sm text-white">{continuousActive ? "Never ends" : project.endDate ? format(new Date(project.endDate.includes("T") ? project.endDate : `${project.endDate}T12:00:00`), 'MMM d, yyyy') : closed ? "Date not set" : "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Total expense</p>
+                <p className="text-sm text-white">{formatCurrency(totalExpense(project))}</p>
+                <p className="text-[11px] text-slate-500 mt-1">{monthsActive(project)} month{monthsActive(project) === 1 ? "" : "s"} of monthly cost</p>
               </div>
             </div>
           </Card>
-          
-          <Link href={`/ai-advisor?projectId=${project.id}`}>
-            <Button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 border-none">
-              Analyze with AI Advisor
-            </Button>
-          </Link>
 
+          <Card className="p-6">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white flex items-center">
+                  <Users className="w-4 h-4 mr-2 text-primary" />
+                  Developers
+                </h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  Exact developer names and the parts they worked on.
+                </p>
+              </div>
+            </div>
+            {canEditDevelopers ? (
+              <>
+                <ContributorsEditor
+                  value={contributors}
+                  onChange={setContributors}
+                  teamMembers={teamMembers || []}
+                />
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    isLoading={updateProjectMutation.isPending}
+                    onClick={() => {
+                      updateProjectMutation.mutate({
+                        id: project.id,
+                        data: { contributors: sanitizeContributors(contributors) },
+                      });
+                    }}
+                  >
+                    Save developers
+                  </Button>
+                </div>
+              </>
+            ) : (project.contributors || []).length ? (
+              <ul className="space-y-2">
+                {(project.contributors || []).map((contributor, index) => (
+                  <li key={`${contributor.name}-${index}`} className="text-sm text-slate-300">
+                    {formatContributor(contributor)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500">No developers recorded yet.</p>
+            )}
+          </Card>
+          
+          {showAi && (
           <Card className="p-6">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
@@ -144,15 +297,18 @@ export default function ProjectDetail() {
               </Button>
             </div>
           </Card>
+          )}
         </div>
 
         {/* Right Col - Mini Board */}
         <div className="w-full lg:w-2/3">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold text-white flex items-center"><KanbanSquare className="w-5 h-5 mr-2 text-primary"/> Task Overview</h3>
-            <Link href="/board">
-              <Button variant="outline" size="sm">Go to Full Board</Button>
-            </Link>
+            {showBoard && (
+              <Link href="/board">
+                <Button variant="outline" size="sm">Go to Full Board</Button>
+              </Link>
+            )}
           </div>
 
           {tasksLoading ? (
@@ -170,6 +326,9 @@ export default function ProjectDetail() {
                       <Card key={task.id} className="p-3 bg-card/80 hover:bg-card transition-colors cursor-pointer group">
                         <div className="text-xs font-mono text-slate-500 mb-1">TSK-{task.id}</div>
                         <h5 className="text-sm font-medium text-white mb-2 group-hover:text-primary transition-colors">{task.title}</h5>
+                        <div className="mb-2">
+                          <TaskTimelineBadge dueDate={task.dueDate} status={task.status} />
+                        </div>
                         <div className="flex justify-between items-center mt-2">
                           <Badge variant="outline" className="text-[10px] py-0 h-5 border-slate-700 text-slate-400 capitalize">{task.type}</Badge>
                           {task.storyPoints && <span className="text-xs text-slate-500 font-mono bg-slate-800 px-1.5 rounded">{task.storyPoints}</span>}
@@ -189,31 +348,36 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      <Dialog isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Project">
+      <Dialog isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit software product">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
+            const type = (fd.get("type") as "web" | "desktop" | "mobile" | "enterprise" | "continuous") || "web";
+            const status = fd.get("status") as "planning" | "in_progress" | "on_hold" | "inactive" | "completed" | "cancelled";
+            const nextClosed = status === "completed" || status === "inactive" || status === "cancelled";
             updateProjectMutation.mutate({
               id: project.id,
               data: {
                 name: fd.get("name") as string,
                 description: (fd.get("description") as string) || undefined,
-                type: fd.get("type") as "internal" | "vendor",
-                status: fd.get("status") as "planning" | "in_progress" | "on_hold" | "completed" | "cancelled",
+                type,
+                status,
                 priority: fd.get("priority") as "low" | "medium" | "high" | "critical",
                 country: (fd.get("country") as string) || undefined,
                 startDate: (fd.get("startDate") as string) || undefined,
-                endDate: (fd.get("endDate") as string) || undefined,
-                budget: fd.get("budget") ? Number(fd.get("budget")) : undefined,
-                completionRate: fd.get("completionRate") ? Number(fd.get("completionRate")) : undefined,
+                endDate: nextClosed ? ((fd.get("endDate") as string) || project.endDate || undefined) : (fd.get("endDate") as string) || undefined,
+                initialCost: fd.get("initialCost") ? Number(fd.get("initialCost")) : null,
+                monthlyCost: fd.get("monthlyCost") ? Number(fd.get("monthlyCost")) : null,
+                budget: fd.get("initialCost") ? Number(fd.get("initialCost")) : null,
+                completionRate: status === "completed" ? 100 : fd.get("completionRate") ? Number(fd.get("completionRate")) : undefined,
               },
             });
           }}
           className="space-y-4"
         >
           <div>
-            <label className="text-sm font-medium text-slate-300 mb-1.5 block">Project Name</label>
+            <label className="text-sm font-medium text-slate-300 mb-1.5 block">Product name</label>
             <Input name="name" required defaultValue={project.name} />
           </div>
           <div>
@@ -226,28 +390,27 @@ export default function ProjectDetail() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Type</label>
+              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Product kind</label>
               <select
                 name="type"
-                defaultValue={project.type}
+                defaultValue={PRODUCT_KINDS.some((kind) => kind.value === project.type) ? project.type : "web"}
                 className="w-full h-10 rounded-lg border border-border bg-input/50 px-3 text-sm text-white focus:ring-2 focus:ring-primary focus:outline-none"
               >
-                <option value="internal">Internal</option>
-                <option value="vendor">Vendor</option>
+                {PRODUCT_KINDS.map((kind) => (
+                  <option key={kind.value} value={kind.value}>{kind.label}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-slate-300 mb-1.5 block">Status</label>
               <select
                 name="status"
-                defaultValue={project.status}
+                defaultValue={PRODUCT_STATUSES.some((item) => item.value === project.status) ? project.status : "in_progress"}
                 className="w-full h-10 rounded-lg border border-border bg-input/50 px-3 text-sm text-white focus:ring-2 focus:ring-primary focus:outline-none"
               >
-                <option value="planning">Planning</option>
-                <option value="in_progress">In Progress</option>
-                <option value="on_hold">On Hold</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                {PRODUCT_STATUSES.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -272,21 +435,31 @@ export default function ProjectDetail() {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Start Date</label>
+              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Start date</label>
               <Input name="startDate" type="date" defaultValue={project.startDate || ""} />
             </div>
+            {!continuousActive && (
+            <>
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-1.5 block">End Date</label>
+              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Completed date</label>
               <Input name="endDate" type="date" defaultValue={project.endDate || ""} />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-300 mb-1.5 block">Completion %</label>
               <Input name="completionRate" type="number" min="0" max="100" defaultValue={project.completionRate} />
             </div>
+            </>
+            )}
           </div>
-          <div>
-            <label className="text-sm font-medium text-slate-300 mb-1.5 block">Budget (NGN)</label>
-            <Input name="budget" type="number" min="0" defaultValue={project.budget || ""} />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Initial cost (NGN)</label>
+              <Input name="initialCost" type="number" min="0" step="0.01" defaultValue={project.initialCost ?? project.budget ?? ""} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Monthly cost (NGN)</label>
+              <Input name="monthlyCost" type="number" min="0" step="0.01" defaultValue={project.monthlyCost ?? ""} />
+            </div>
           </div>
           <div className="pt-4 flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)}>

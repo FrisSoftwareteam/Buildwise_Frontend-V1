@@ -20,17 +20,25 @@ export function getStatusColor(status: string): string {
     case 'done':
     case 'active':
     case 'handover_complete':
+    case 'passed':
+    case 'resolved':
       return 'bg-success/20 text-success border-success/30';
-    case 'in_progress':
-    case 'under_review':
-    case 'negotiation':
-    case 'handover_in_progress':
-      return 'bg-primary/20 text-primary border-primary/30';
     case 'planning':
     case 'todo':
     case 'submitted':
     case 'pending':
+    case 'notice_issued':
+    case 'draft':
+    case 'open':
       return 'bg-warning/20 text-warning border-warning/30';
+    case 'in_progress':
+    case 'under_review':
+    case 'negotiation':
+    case 'handover_in_progress':
+    case 'in_session':
+    case 'voting':
+    case 'acknowledged':
+      return 'bg-primary/20 text-primary border-primary/30';
     case 'backlog':
     case 'on_hold':
     case 'inactive':

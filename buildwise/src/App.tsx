@@ -7,6 +7,8 @@ import { Layout } from "@/components/layout/Layout";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 // Pages
+import PortalHub from "@/pages/PortalHub";
+import GovernanceHome from "@/pages/GovernanceHome";
 import Dashboard from "@/pages/Dashboard";
 import Projects from "@/pages/Projects";
 import ProjectDetail from "@/pages/ProjectDetail";
@@ -20,6 +22,10 @@ import AIAdvisor from "@/pages/AIAdvisor";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import OAuthCallback from "@/pages/OAuthCallback";
+import Settings from "@/pages/Settings";
+import OperationsCenter from "@/pages/OperationsCenter";
+import AgmOperations from "@/pages/AgmOperations";
+import Playbooks from "@/pages/Playbooks";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,15 +35,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="h-full flex flex-col items-center justify-center text-slate-500">
-      <h2 className="text-2xl font-display text-white mb-2">{title}</h2>
-      <p>This section is currently under development.</p>
-    </div>
-  );
-}
 
 function ProtectedRouter() {
   const { user, isLoading } = useAuth();
@@ -67,9 +64,8 @@ function ProtectedRouter() {
 
   return (
     <Switch>
-      {/* Auth routes — always accessible */}
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
+      <Route path="/login">{user ? <Redirect to="/" /> : <Login />}</Route>
+      <Route path="/signup">{user ? <Redirect to="/" /> : <Signup />}</Route>
       <Route path="/auth/callback" component={OAuthCallback} />
 
       {/* Protected routes */}
@@ -79,7 +75,9 @@ function ProtectedRouter() {
         ) : (
           <Layout>
             <Switch>
-              <Route path="/" component={Dashboard} />
+              <Route path="/" component={PortalHub} />
+              <Route path="/software" component={Dashboard} />
+              <Route path="/governance" component={GovernanceHome} />
               <Route path="/projects" component={Projects} />
               <Route path="/projects/:id" component={ProjectDetail} />
               <Route path="/board" component={BoardView} />
@@ -87,9 +85,12 @@ function ProtectedRouter() {
               <Route path="/sprints" component={Sprints} />
               <Route path="/vendors" component={Vendors} />
               <Route path="/vendor-pipeline" component={VendorPipeline} />
+              <Route path="/operations" component={OperationsCenter} />
+              <Route path="/agm" component={AgmOperations} />
+              <Route path="/playbooks" component={Playbooks} />
               <Route path="/team" component={Team} />
               <Route path="/ai-advisor" component={AIAdvisor} />
-              <Route path="/settings" component={() => <PlaceholderPage title="Platform Settings" />} />
+              <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>
           </Layout>

@@ -37,17 +37,32 @@ function buildOAuthCallbackUrl() {
   return new URL(`${BASE || ""}/auth/callback`, window.location.origin).toString();
 }
 
-function normalizeStoredUser(user: AuthUser): AuthUser {
-  if (user.email === "ifeanyiayodeji@firstregistrarsnigeria.com") {
-    return {
-      ...user,
-      role: "Software Engineer",
-      roles: ["Software Engineer", "Software Unit Supervisor"],
-      department: "Software",
-    };
+async function readApiJson(res: Response) {
+  try {
+    return await res.json() as { error?: string; user?: AuthUser };
+  } catch {
+    throw new Error(
+      res.ok ? "Unexpected response from the server." : "Could not reach the BuildWise API. Is it running?",
+    );
   }
+}
 
-  return user;
+function normalizeStoredUser(user: AuthUser): AuthUser {
+  const roleAliases: Record<string, string> = {
+    "Software Engineer": "developer",
+    "Software Unit Supervisor": "developer",
+    "Software Developer": "developer",
+    "Internal Software Developer": "developer",
+    Administrator: "admin",
+    "Project Manager": "manager",
+    Vendor: "vendor",
+    "External Software Vendor": "vendor",
+  };
+
+  return {
+    ...user,
+    role: roleAliases[user.role] || user.role,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -111,8 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    const data = await res.json();
+    const data = await readApiJson(res);
     if (!res.ok) throw new Error(data.error || "Login failed");
+    if (!data.user) throw new Error("Login failed");
     const normalizedUser = normalizeStoredUser(data.user);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedUser));
     setUser(normalizedUser);
@@ -124,8 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const data = await res.json();
+    const data = await readApiJson(res);
     if (!res.ok) throw new Error(data.error || "Signup failed");
+    if (!data.user) throw new Error("Signup failed");
     const normalizedUser = normalizeStoredUser(data.user);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedUser));
     setUser(normalizedUser);

@@ -154,6 +154,10 @@ function normalizeAnalysis(result: Partial<AiAnalysisResult>): AiAnalysisResult 
   };
 }
 
+export function isGeminiConfigured() {
+  return Boolean(import.meta.env.VITE_GEMINI_API_KEY?.trim());
+}
+
 export async function analyzeProjectWithGemini(project: Project): Promise<AiAnalysisResult> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 

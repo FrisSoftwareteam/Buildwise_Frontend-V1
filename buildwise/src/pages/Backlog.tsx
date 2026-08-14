@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { useCreateTask, useGetProject, useListProjects, useListTasks } from "@workspace/api-client-react";
 import { Badge, Button, Card, Dialog, Input } from "@/components/ui/shared";
+import { productKindLabel } from "@/lib/product-kind";
+import { useRefreshQueries } from "@/lib/refresh-queries";
+import { useAuth } from "@/context/AuthContext";
+import { canPlanSprints } from "@/lib/software-roles";
+import { TaskTimelineBadge } from "@/components/TaskTimelineBadge";
 import { ClipboardList, Flag, Layers3, Loader2, Plus } from "lucide-react";
 
 export default function Backlog() {
+  const { user } = useAuth();
+  const canPlan = canPlanSprints(user?.role);
   const { data: projects, isLoading: projectsLoading } = useListProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -12,15 +19,17 @@ export default function Backlog() {
   const { data: project, isLoading: projectLoading } = useGetProject(activeProjectId || 0, {
     query: { enabled: !!activeProjectId },
   });
-  const { data: tasks, isLoading: tasksLoading } = useListTasks(activeProjectId || 0, {
+  const tasksQuery = useListTasks(activeProjectId || 0, {
     query: { enabled: !!activeProjectId },
   });
+  const { data: tasks, isLoading: tasksLoading } = tasksQuery;
+  const refresh = useRefreshQueries();
 
   const createTaskMutation = useCreateTask({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async () => {
         setIsCreateOpen(false);
-        window.location.reload();
+        await refresh(tasksQuery.queryKey);
       },
     },
   });
@@ -43,7 +52,7 @@ export default function Backlog() {
             <ClipboardList className="w-6 h-6 text-primary" />
             Project Backlog
           </h2>
-          <p className="text-slate-400 text-sm">Track work waiting to be pulled into delivery for the selected project.</p>
+          <p className="text-slate-400 text-sm">Work waiting to be built for the selected software product.</p>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -59,10 +68,12 @@ export default function Backlog() {
             ))}
           </select>
 
-          <Button onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Backlog Item
-          </Button>
+          {canPlan && (
+            <Button onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Backlog Item
+            </Button>
+          )}
         </div>
       </div>
 
@@ -72,7 +83,7 @@ export default function Backlog() {
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10">
-                  {project.type}
+                  {productKindLabel(project.type)}
                 </Badge>
                 <Badge variant="outline" className="border-slate-600 text-slate-300 bg-slate-900/50">
                   {project.status.replace("_", " ")}
@@ -120,6 +131,7 @@ export default function Backlog() {
                   </div>
                   <h4 className="text-lg font-semibold text-white">{task.title}</h4>
                   <p className="text-sm text-slate-400">{task.description || "No backlog detail added yet."}</p>
+                  <TaskTimelineBadge dueDate={task.dueDate} status={task.status} />
                 </div>
 
                 <div className="text-right shrink-0">
@@ -145,10 +157,12 @@ export default function Backlog() {
           <p className="text-slate-400 mt-2 max-w-xl mx-auto">
             Add project-specific backlog work here before it moves into To Do, In Progress, In Review, or Done.
           </p>
-          <Button className="mt-5" onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add First Backlog Item
-          </Button>
+          {canPlan && (
+            <Button className="mt-5" onClick={() => setIsCreateOpen(true)} disabled={!activeProjectId}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add First Backlog Item
+            </Button>
+          )}
         </Card>
       )}
 
@@ -170,6 +184,7 @@ export default function Backlog() {
                 priority: fd.get("priority") as "low" | "medium" | "high" | "critical",
                 type: fd.get("type") as "story" | "task" | "bug" | "epic" | "subtask",
                 storyPoints: fd.get("storyPoints") ? Number(fd.get("storyPoints")) : undefined,
+                dueDate: fd.get("dueDate") as string,
                 label: (fd.get("label") as string) || undefined,
               },
             });
@@ -226,6 +241,11 @@ export default function Backlog() {
               <label className="text-sm font-medium text-slate-300 mb-1.5 block">Label</label>
               <Input name="label" placeholder="e.g. api" />
             </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-300 mb-1.5 block">Timeline</label>
+            <Input name="dueDate" type="date" required />
+            <p className="text-[11px] text-slate-500 mt-1">If this date is missed, project managers are emailed a reminder.</p>
           </div>
           <div className="pt-4 flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)}>

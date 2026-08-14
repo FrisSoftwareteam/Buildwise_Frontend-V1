@@ -2,7 +2,7 @@ import { useState, FormEvent } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
-import { AuthProviderButtons } from "@/components/auth/AuthProviderButtons";
+import { AuthProviderButtons, hasVisibleProviders } from "@/components/auth/AuthProviderButtons";
 
 export default function Login() {
   const { login, loginWithProvider, oauthProviders } = useAuth();
@@ -50,17 +50,17 @@ export default function Login() {
         <div className="relative z-10 space-y-6">
           <div>
             <h1 className="text-4xl font-bold text-white leading-tight">
-              Manage projects.<br />
-              <span className="text-[#c4a747]">Drive results.</span>
+              Build software.<br />
+              <span className="text-[#c4a747]">Run meetings.</span>
             </h1>
             <p className="mt-4 text-slate-400 text-lg leading-relaxed">
-              BuildWise brings your entire project portfolio, vendor pipeline and AI-powered insights into one powerful platform.
+              BuildWise keeps software products (web, desktop, enterprise) on a sprint board, and issuer AGMs in a separate governance workspace.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: "Active Projects", value: "16+" },
+              { label: "Software products", value: "16+" },
               { label: "Vendors Managed", value: "3+" },
               { label: "Tasks Tracked", value: "120+" },
               { label: "AI Insights", value: "Daily" },
@@ -160,20 +160,37 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs uppercase tracking-[0.3em] text-slate-500">or</span>
-            <div className="h-px flex-1 bg-white/10" />
-          </div>
-
-          <AuthProviderButtons
-            availableProviders={oauthProviders}
+          <button
+            type="button"
             disabled={loading}
-            onSelect={(provider) => {
+            onClick={() => {
+              setEmail("c.obi@firstregistrars.com");
+              setPassword("password123");
               setError("");
-              loginWithProvider(provider);
             }}
-          />
+            className="w-full text-sm text-slate-400 hover:text-[#c4a747] transition-colors"
+          >
+            Use demo account
+          </button>
+
+          {hasVisibleProviders(oauthProviders) && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs uppercase tracking-[0.3em] text-slate-500">or</span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+
+              <AuthProviderButtons
+                availableProviders={oauthProviders}
+                disabled={loading}
+                onSelect={(provider) => {
+                  setError("");
+                  loginWithProvider(provider);
+                }}
+              />
+            </>
+          )}
 
           <div className="text-center">
             <span className="text-slate-500 text-sm">Need an account? </span>

@@ -12,28 +12,37 @@ import { Card, Button, Badge, Input, Dialog } from "@/components/ui/shared";
 import { getStatusColor } from "@/lib/utils";
 import { Plus, Search, Building2, Phone, Mail, Globe, Briefcase } from "lucide-react";
 import { format } from "date-fns";
+import { useRefreshQueries } from "@/lib/refresh-queries";
+import { useAuth } from "@/context/AuthContext";
+import { canManageVendors } from "@/lib/software-roles";
 
 export default function Vendors() {
+  const { user } = useAuth();
+  const canManage = canManageVendors(user?.role);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingVendorId, setEditingVendorId] = useState<number | null>(null);
-  const { data: vendors, isLoading } = useListVendors();
-  const { data: vendorProjects } = useListVendorProjects();
-  const { data: projects } = useListProjects();
+  const vendorsQuery = useListVendors();
+  const vendorProjectsQuery = useListVendorProjects();
+  const projectsQuery = useListProjects();
+  const { data: vendors, isLoading } = vendorsQuery;
+  const { data: vendorProjects } = vendorProjectsQuery;
+  const { data: projects } = projectsQuery;
+  const refresh = useRefreshQueries();
   
   const createMutation = useCreateVendor({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async () => {
         setIsCreateOpen(false);
-        window.location.reload();
+        await refresh(vendorsQuery.queryKey);
       }
     }
   });
   const updateMutation = useUpdateVendor({
     mutation: {
-      onSuccess: () => {
+      onSuccess: async () => {
         setEditingVendorId(null);
-        window.location.reload();
+        await refresh(vendorsQuery.queryKey, vendorProjectsQuery.queryKey, projectsQuery.queryKey);
       }
     }
   });
@@ -107,10 +116,12 @@ export default function Vendors() {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Vendor
-          </Button>
+          {canManage && (
+            <Button onClick={() => setIsCreateOpen(true)} className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Vendor
+            </Button>
+          )}
         </div>
       </div>
 
@@ -160,14 +171,16 @@ export default function Vendors() {
             </div>
             <div className="px-6 py-3 bg-slate-900/50 border-t border-white/5 flex justify-between items-center text-xs text-slate-500">
               <span>Added {format(new Date(vendor.createdAt), 'MMM yyyy')}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
-                onClick={() => setEditingVendorId(vendor.id)}
-              >
-                Edit Profile
-              </Button>
+              {canManage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                  onClick={() => setEditingVendorId(vendor.id)}
+                >
+                  Edit Profile
+                </Button>
+              )}
             </div>
           </Card>
         ))}
@@ -294,7 +307,7 @@ export default function Vendors() {
               }
 
               setEditingVendorId(null);
-              window.location.reload();
+              await refresh(vendorsQuery.queryKey, vendorProjectsQuery.queryKey, projectsQuery.queryKey);
             }}
             className="space-y-4"
           >

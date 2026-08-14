@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useListProjects, type AiAnalysisResult } from "@workspace/api-client-react";
 import { Card, Button, Badge } from "@/components/ui/shared";
 import { BrainCircuit, Loader2, CheckCircle2, AlertTriangle, Target, Lightbulb, TrendingUp } from "lucide-react";
-import { analyzeProjectWithGemini } from "@/lib/gemini-ai-advisor";
+import { analyzeProjectWithGemini, isGeminiConfigured } from "@/lib/gemini-ai-advisor";
 
 export default function AIAdvisor() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | ''>('');
@@ -10,6 +10,7 @@ export default function AIAdvisor() {
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { data: projects } = useListProjects();
+  const aiReady = isGeminiConfigured();
 
   useEffect(() => {
     const projectId = new URLSearchParams(window.location.search).get("projectId");
@@ -26,7 +27,7 @@ export default function AIAdvisor() {
 
     const selectedProject = projects?.find((project) => project.id === Number(selectedProjectId));
     if (!selectedProject) {
-      setAnalyzeError("Select a valid project before requesting analysis.");
+      setAnalyzeError("Select a valid software product before requesting analysis.");
       return;
     }
 
@@ -53,20 +54,34 @@ export default function AIAdvisor() {
             <BrainCircuit className="w-6 h-6 mr-3 text-indigo-400" />
             AI Business Advisor
           </h2>
-          <p className="text-slate-400 text-sm mt-1">Get strategic recommendations, profitability forecasts, and risk analysis powered by AI.</p>
+          <p className="text-slate-400 text-sm mt-1">Advice on a software product — not an issuer meeting. Profitability, risk, and continue / pause / expand.</p>
         </div>
       </div>
+
+      {!aiReady && (
+        <Card className="border-amber-500/20 bg-amber-950/20 p-4">
+          <div className="flex items-start gap-3 text-amber-100">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+            <div>
+              <h3 className="font-semibold">AI is not configured</h3>
+              <p className="mt-1 text-sm text-amber-100/80">
+                Add a Gemini API key to <code className="text-amber-200">buildwise/.env</code> as <code className="text-amber-200">VITE_GEMINI_API_KEY</code>, then restart the frontend.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6 bg-gradient-to-r from-slate-900 to-indigo-950/20 border-indigo-500/20">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
-            <label className="text-sm font-medium text-indigo-200 mb-2 block">Select Project to Analyze</label>
+            <label className="text-sm font-medium text-indigo-200 mb-2 block">Select software product to analyze</label>
             <select 
               className="w-full h-12 rounded-lg border border-indigo-500/30 bg-black/40 px-4 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(Number(e.target.value))}
             >
-              <option value="">-- Choose a project --</option>
+              <option value="">-- Choose a software product --</option>
               {projects?.map(p => (
                 <option key={p.id} value={p.id}>{p.name} ({p.country || 'Global'})</option>
               ))}
@@ -74,7 +89,7 @@ export default function AIAdvisor() {
           </div>
           <Button 
             onClick={handleAnalyze} 
-            disabled={!selectedProjectId || isAnalyzing}
+            disabled={!selectedProjectId || isAnalyzing || !aiReady}
             className="h-12 px-8 bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/25 w-full md:w-auto"
           >
             {isAnalyzing ? (

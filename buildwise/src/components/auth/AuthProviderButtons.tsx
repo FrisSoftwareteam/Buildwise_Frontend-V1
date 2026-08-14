@@ -25,6 +25,10 @@ const PROVIDERS: Array<{
   },
 ];
 
+export function hasVisibleProviders(availableProviders: Record<Provider, boolean>) {
+  return PROVIDERS.some(({ provider }) => availableProviders[provider]);
+}
+
 export function AuthProviderButtons({
   availableProviders,
   disabled = false,

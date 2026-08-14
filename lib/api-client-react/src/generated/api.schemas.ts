@@ -15,6 +15,7 @@ export const UserRole = {
   admin: "admin",
   manager: "manager",
   developer: "developer",
+  vendor: "vendor",
   viewer: "viewer",
 } as const;
 
@@ -35,6 +36,7 @@ export const CreateUserBodyRole = {
   admin: "admin",
   manager: "manager",
   developer: "developer",
+  vendor: "vendor",
   viewer: "viewer",
 } as const;
 
@@ -53,6 +55,7 @@ export const UpdateUserBodyRole = {
   admin: "admin",
   manager: "manager",
   developer: "developer",
+  vendor: "vendor",
   viewer: "viewer",
 } as const;
 
@@ -67,6 +70,11 @@ export interface UpdateUserBody {
 export type ProjectType = (typeof ProjectType)[keyof typeof ProjectType];
 
 export const ProjectType = {
+  web: "web",
+  desktop: "desktop",
+  mobile: "mobile",
+  enterprise: "enterprise",
+  continuous: "continuous",
   internal: "internal",
   vendor: "vendor",
 } as const;
@@ -77,6 +85,7 @@ export const ProjectStatus = {
   planning: "planning",
   in_progress: "in_progress",
   on_hold: "on_hold",
+  inactive: "inactive",
   completed: "completed",
   cancelled: "cancelled",
 } as const;
@@ -102,17 +111,41 @@ export interface Project {
   startDate?: string | null;
   endDate?: string | null;
   budget?: number | null;
+  initialCost?: number | null;
+  monthlyCost?: number | null;
   completionRate: number;
   ownerId?: number | null;
   vendorId?: number | null;
+  contributors?: ProjectContributor[];
   createdAt: string;
   updatedAt: string;
+}
+
+export type ProjectWorkPart = (typeof ProjectWorkPart)[keyof typeof ProjectWorkPart];
+
+export const ProjectWorkPart = {
+  frontend: "frontend",
+  backend: "backend",
+  database: "database",
+  integration: "integration",
+  cloud_hosting: "cloud_hosting",
+} as const;
+
+export interface ProjectContributor {
+  name: string;
+  userId?: number | null;
+  parts: ProjectWorkPart[];
 }
 
 export type CreateProjectBodyType =
   (typeof CreateProjectBodyType)[keyof typeof CreateProjectBodyType];
 
 export const CreateProjectBodyType = {
+  web: "web",
+  desktop: "desktop",
+  mobile: "mobile",
+  enterprise: "enterprise",
+  continuous: "continuous",
   internal: "internal",
   vendor: "vendor",
 } as const;
@@ -124,6 +157,7 @@ export const CreateProjectBodyStatus = {
   planning: "planning",
   in_progress: "in_progress",
   on_hold: "on_hold",
+  inactive: "inactive",
   completed: "completed",
   cancelled: "cancelled",
 } as const;
@@ -148,14 +182,22 @@ export interface CreateProjectBody {
   startDate?: string | null;
   endDate?: string | null;
   budget?: number | null;
+  initialCost?: number | null;
+  monthlyCost?: number | null;
   ownerId?: number | null;
   vendorId?: number | null;
+  contributors?: ProjectContributor[];
 }
 
 export type UpdateProjectBodyType =
   (typeof UpdateProjectBodyType)[keyof typeof UpdateProjectBodyType];
 
 export const UpdateProjectBodyType = {
+  web: "web",
+  desktop: "desktop",
+  mobile: "mobile",
+  enterprise: "enterprise",
+  continuous: "continuous",
   internal: "internal",
   vendor: "vendor",
 } as const;
@@ -167,6 +209,7 @@ export const UpdateProjectBodyStatus = {
   planning: "planning",
   in_progress: "in_progress",
   on_hold: "on_hold",
+  inactive: "inactive",
   completed: "completed",
   cancelled: "cancelled",
 } as const;
@@ -191,9 +234,12 @@ export interface UpdateProjectBody {
   startDate?: string | null;
   endDate?: string | null;
   budget?: number | null;
+  initialCost?: number | null;
+  monthlyCost?: number | null;
   completionRate?: number;
   ownerId?: number | null;
   vendorId?: number | null;
+  contributors?: ProjectContributor[];
 }
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
@@ -238,6 +284,7 @@ export interface Task {
   reporterId?: number | null;
   storyPoints?: number | null;
   dueDate?: string | null;
+  overdueReminderSentOn?: string | null;
   label?: string | null;
   position: number;
   createdAt: string;
@@ -600,6 +647,10 @@ export type ListProjectsType =
   (typeof ListProjectsType)[keyof typeof ListProjectsType];
 
 export const ListProjectsType = {
+  web: "web",
+  desktop: "desktop",
+  mobile: "mobile",
+  enterprise: "enterprise",
   internal: "internal",
   vendor: "vendor",
 } as const;
