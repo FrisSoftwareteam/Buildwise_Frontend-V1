@@ -1,6 +1,19 @@
+const DEFAULT_API_ORIGIN = "https://buildwise-backend-v1-api-server-dnuigdwoq.vercel.app";
+
 export const config = {
   matcher: "/api/:path*",
 };
+
+function vercelProtectionResponse(location) {
+  if (!location || !/vercel\.com\/(sso|login|protection)/i.test(location)) return null;
+  return Response.json(
+    {
+      error:
+        "The backend is locked by Vercel Deployment Protection. In the backend Vercel project, set Deployment Protection to Disabled (or Standard Protection off for Production) so /api/healthz is public JSON.",
+    },
+    { status: 502 },
+  );
+}
 
 export default async function middleware(request) {
   const incoming = new URL(request.url);
@@ -8,17 +21,7 @@ export default async function middleware(request) {
     return;
   }
 
-  const origin = process.env.API_ORIGIN?.replace(/\/$/, "");
-  if (!origin) {
-    return Response.json(
-      {
-        error:
-          "API_ORIGIN is not set. In the frontend Vercel project, add API_ORIGIN as the backend URL (for example https://your-backend.vercel.app).",
-      },
-      { status: 502 },
-    );
-  }
-
+  const origin = (process.env.API_ORIGIN || DEFAULT_API_ORIGIN).replace(/\/$/, "");
   const target = new URL(incoming.pathname + incoming.search, origin);
   const headers = new Headers(request.headers);
   headers.delete("host");
@@ -35,6 +38,9 @@ export default async function middleware(request) {
   }
 
   const upstream = await fetch(target, init);
+  const blocked = vercelProtectionResponse(upstream.headers.get("location") || "");
+  if (blocked) return blocked;
+
   const responseHeaders = new Headers(upstream.headers);
   responseHeaders.delete("content-encoding");
   responseHeaders.delete("transfer-encoding");

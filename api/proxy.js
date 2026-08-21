@@ -1,3 +1,5 @@
+const DEFAULT_API_ORIGIN = "https://buildwise-backend-v1-api-server-dnuigdwoq.vercel.app";
+
 function apiPathFromRequest(req) {
   const raw = req.query?.__apiPath;
   const pathPart = Array.isArray(raw) ? raw.filter(Boolean).join("/") : raw;
@@ -23,15 +25,7 @@ function apiPathFromRequest(req) {
 }
 
 export default async function handler(req, res) {
-  const origin = process.env.API_ORIGIN?.replace(/\/$/, "");
-  if (!origin) {
-    res.status(502).json({
-      error:
-        "API_ORIGIN is not set. In the frontend Vercel project, add API_ORIGIN as the backend URL (for example https://your-backend.vercel.app).",
-    });
-    return;
-  }
-
+  const origin = (process.env.API_ORIGIN || DEFAULT_API_ORIGIN).replace(/\/$/, "");
   const target = new URL(apiPathFromRequest(req), origin);
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers || {})) {
@@ -40,7 +34,7 @@ export default async function handler(req, res) {
   }
 
   const method = req.method || "GET";
-  const init = { method, headers };
+  const init = { method, headers, redirect: "manual" };
   if (method !== "GET" && method !== "HEAD") {
     if (Buffer.isBuffer(req.body) || typeof req.body === "string") {
       init.body = req.body;
@@ -53,6 +47,14 @@ export default async function handler(req, res) {
   }
 
   const upstream = await fetch(target, init);
+  const location = upstream.headers.get("location") || "";
+  if (/vercel\.com\/(sso|login|protection)/i.test(location)) {
+    res.status(502).json({
+      error:
+        "The backend is locked by Vercel Deployment Protection. In the backend Vercel project, set Deployment Protection to Disabled (or Standard Protection off for Production) so /api/healthz is public JSON.",
+    });
+    return;
+  }
   const buf = Buffer.from(await upstream.arrayBuffer());
   res.status(upstream.status);
   upstream.headers.forEach((value, key) => {
