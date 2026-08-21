@@ -3,6 +3,14 @@
   "outputDirectory": "buildwise/dist/public",
   "rewrites": [
     {
+      "source": "/api/proxy",
+      "destination": "/api/proxy"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/proxy?__apiPath=:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

@@ -37,12 +37,30 @@ function buildOAuthCallbackUrl() {
   return new URL(`${BASE || ""}/auth/callback`, window.location.origin).toString();
 }
 
+function apiErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "string" && error.trim()) return error;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}
+
 async function readApiJson(res: Response) {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(
+      "Could not reach the BuildWise API. Set API_ORIGIN on the frontend Vercel project to your backend URL.",
+    );
+  }
+
   try {
-    return await res.json() as { error?: string; user?: AuthUser };
+    return JSON.parse(text) as { error?: string | { message?: string }; user?: AuthUser };
   } catch {
     throw new Error(
-      res.ok ? "Unexpected response from the server." : "Could not reach the BuildWise API. Is it running?",
+      res.ok
+        ? "Unexpected response from the server."
+        : "Could not reach the BuildWise API. Check API_ORIGIN and that the backend is deployed.",
     );
   }
 }
@@ -127,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     const data = await readApiJson(res);
-    if (!res.ok) throw new Error(data.error || "Login failed");
+    if (!res.ok) throw new Error(apiErrorMessage(data.error, "Login failed"));
     if (!data.user) throw new Error("Login failed");
     const normalizedUser = normalizeStoredUser(data.user);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedUser));
@@ -141,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify(payload),
     });
     const data = await readApiJson(res);
-    if (!res.ok) throw new Error(data.error || "Signup failed");
+    if (!res.ok) throw new Error(apiErrorMessage(data.error, "Signup failed"));
     if (!data.user) throw new Error("Signup failed");
     const normalizedUser = normalizeStoredUser(data.user);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedUser));

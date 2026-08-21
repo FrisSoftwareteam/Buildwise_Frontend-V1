@@ -1,3 +1,27 @@
+function apiPathFromRequest(req) {
+  const raw = req.query?.__apiPath;
+  const pathPart = Array.isArray(raw) ? raw.filter(Boolean).join("/") : raw;
+  if (typeof pathPart === "string" && pathPart.length) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query || {})) {
+      if (key === "__apiPath") continue;
+      const values = Array.isArray(value) ? value : [value];
+      for (const item of values) {
+        if (item != null) params.append(key, String(item));
+      }
+    }
+    const qs = params.toString();
+    return `/api/${pathPart.replace(/^\/+/, "")}${qs ? `?${qs}` : ""}`;
+  }
+
+  const forwarded = req.headers["x-forwarded-uri"] || req.headers["x-invoke-path"];
+  if (typeof forwarded === "string" && forwarded.startsWith("/api")) {
+    return forwarded;
+  }
+
+  return req.url || "/";
+}
+
 export default async function handler(req, res) {
   const origin = process.env.API_ORIGIN?.replace(/\/$/, "");
   if (!origin) {
@@ -8,7 +32,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const target = new URL(req.url || "/", origin);
+  const target = new URL(apiPathFromRequest(req), origin);
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers || {})) {
     if (!value || key === "host" || key === "connection" || key === "content-length") continue;
