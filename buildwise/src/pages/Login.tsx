@@ -1,5 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Boxes, Users, ListChecks, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { AuthProviderButtons, hasVisibleProviders } from "@/components/auth/AuthProviderButtons";
 
@@ -43,16 +43,25 @@ export default function Login() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
             {[
-              { label: "Software products", value: "16+" },
-              { label: "Vendors Managed", value: "3+" },
-              { label: "Tasks Tracked", value: "120+" },
-              { label: "AI Insights", value: "Daily" },
-            ].map(stat => (
-              <div key={stat.label} className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                <p className="text-sm text-slate-400 mt-1">{stat.label}</p>
+              { label: "Software products", value: "16+", Icon: Boxes },
+              { label: "Vendors Managed", value: "3+", Icon: Users },
+              { label: "Tasks Tracked", value: "120+", Icon: ListChecks },
+              { label: "AI Insights", value: "Daily", Icon: Sparkles },
+            ].map(({ label, value, Icon }) => (
+              <div
+                key={label}
+                className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-4 transition-all duration-200 hover:border-[#c4a747]/40 hover:bg-white/[0.07]"
+              >
+                <div className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-[#c4a747]/0 blur-2xl transition-colors duration-200 group-hover:bg-[#c4a747]/20" />
+                <div className="relative flex items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#c4a747]/10 text-[#c4a747]">
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <p className="text-xl sm:text-2xl font-bold text-white leading-none">{value}</p>
+                </div>
+                <p className="relative mt-2 text-xs sm:text-sm text-slate-400 leading-snug">{label}</p>
               </div>
             ))}
           </div>
