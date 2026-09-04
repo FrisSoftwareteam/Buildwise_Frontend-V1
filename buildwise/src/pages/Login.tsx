@@ -1,31 +1,16 @@
-import { useState, FormEvent } from "react";
-import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { useLocation } from "wouter";
 import { AuthProviderButtons, hasVisibleProviders } from "@/components/auth/AuthProviderButtons";
 
 export default function Login() {
-  const { login, loginWithProvider, oauthProviders } = useAuth();
-  const [, setLocation] = useLocation();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { loginWithProvider, oauthProviders, isLoading } = useAuth();
+  const [locationSearch] = useLocation();
+  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const oauthError = params?.get("error") || "";
+  void locationSearch;
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await login(email, password);
-      setLocation("/");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const microsoftAvailable = hasVisibleProviders(oauthProviders);
 
   return (
     <div className="min-h-screen flex">
@@ -95,116 +80,32 @@ export default function Login() {
 
           <div>
             <h2 className="text-3xl font-bold text-white">Welcome back</h2>
-            <p className="mt-2 text-slate-400">Sign in to your BuildWise account</p>
+            <p className="mt-2 text-slate-400">Sign in with your First Registrars Microsoft account</p>
           </div>
 
-          {error && (
+          {oauthError && (
             <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
+              {oauthError}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Work Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@firstregistrars.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#c4a747]/50 focus:border-[#c4a747]/50 transition-all"
-                />
-              </div>
+          {microsoftAvailable ? (
+            <AuthProviderButtons
+              availableProviders={oauthProviders}
+              disabled={isLoading}
+              onSelect={(provider) => loginWithProvider(provider)}
+            />
+          ) : (
+            <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-300 text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Microsoft sign-in is not yet configured for this environment. Contact your administrator.
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#c4a747]/50 focus:border-[#c4a747]/50 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#1b3a6b] hover:bg-[#1b3a6b]/80 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-[#c4a747]/30 hover:border-[#c4a747]/60"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Signing in...
-                </span>
-              ) : "Sign In"}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              setEmail("c.obi@firstregistrars.com");
-              setPassword("password123");
-              setError("");
-            }}
-            className="w-full text-sm text-slate-400 hover:text-[#c4a747] transition-colors"
-          >
-            Use demo account
-          </button>
-
-          {hasVisibleProviders(oauthProviders) && (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-white/10" />
-                <span className="text-xs uppercase tracking-[0.3em] text-slate-500">or</span>
-                <div className="h-px flex-1 bg-white/10" />
-              </div>
-
-              <AuthProviderButtons
-                availableProviders={oauthProviders}
-                disabled={loading}
-                onSelect={(provider) => {
-                  setError("");
-                  loginWithProvider(provider);
-                }}
-              />
-            </>
           )}
 
-          <div className="text-center">
-            <span className="text-slate-500 text-sm">Need an account? </span>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setLocation("/signup");
-              }}
-              className="text-[#c4a747] hover:text-[#c4a747]/80 text-sm font-medium transition-colors"
-            >
-              Create one
-            </a>
-          </div>
+          <p className="text-center text-xs text-slate-500">
+            BuildWise accounts are managed by First Registrars &amp; Investor Services. Only organizational Microsoft accounts can sign in.
+          </p>
 
         </div>
       </div>

@@ -1,6 +1,4 @@
-import { Chrome, Building2 } from "lucide-react";
-
-type Provider = "google" | "microsoft";
+type Provider = "microsoft";
 
 type AuthProviderButtonsProps = {
   availableProviders: Record<Provider, boolean>;
@@ -11,19 +9,23 @@ type AuthProviderButtonsProps = {
 const PROVIDERS: Array<{
   provider: Provider;
   label: string;
-  Icon: typeof Chrome;
 }> = [
-  {
-    provider: "google",
-    label: "Continue with Google",
-    Icon: Chrome,
-  },
   {
     provider: "microsoft",
     label: "Continue with Microsoft",
-    Icon: Building2,
   },
 ];
+
+function MicrosoftLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+      <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+      <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+      <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+    </svg>
+  );
+}
 
 export function hasVisibleProviders(availableProviders: Record<Provider, boolean>) {
   return PROVIDERS.some(({ provider }) => availableProviders[provider]);
@@ -44,16 +46,16 @@ export function AuthProviderButtons({
 
   return (
     <div className="space-y-3">
-      {visibleProviders.map(({ provider, label, Icon }) => (
+      {visibleProviders.map(({ provider, label }) => (
         <button
           key={provider}
           type="button"
           disabled={disabled}
           onClick={() => onSelect(provider)}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white transition hover:border-[#c4a747]/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-xl border border-white/10 bg-white px-4 py-3.5 text-[#1c2436] font-semibold transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="flex items-center justify-center gap-3">
-            <Icon className="h-4 w-4 text-[#c4a747]" />
+            <MicrosoftLogo className="h-5 w-5" />
             {label}
           </span>
         </button>

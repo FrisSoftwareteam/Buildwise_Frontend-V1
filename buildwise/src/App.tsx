@@ -20,7 +20,6 @@ import Sprints from "@/pages/Sprints";
 import Team from "@/pages/Team";
 import AIAdvisor from "@/pages/AIAdvisor";
 import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
 import OAuthCallback from "@/pages/OAuthCallback";
 import Settings from "@/pages/Settings";
 import OperationsCenter from "@/pages/OperationsCenter";
@@ -65,7 +64,7 @@ function ProtectedRouter() {
   return (
     <Switch>
       <Route path="/login">{user ? <Redirect to="/" /> : <Login />}</Route>
-      <Route path="/signup">{user ? <Redirect to="/" /> : <Signup />}</Route>
+      <Route path="/signup"><Redirect to="/login" /></Route>
       <Route path="/auth/callback" component={OAuthCallback} />
 
       {/* Protected routes */}
