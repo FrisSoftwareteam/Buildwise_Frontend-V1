@@ -12,6 +12,7 @@ import {
   Shield,
   Landmark,
   ScrollText,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ export const SOFTWARE_NAV: NavItem[] = [
   { label: "Sprint board", href: "/board", icon: Trello },
   { label: "Backlog", href: "/backlog", icon: ListTodo },
   { label: "Sprints", href: "/sprints", icon: Timer },
+  { label: "KPIs", href: "/kpis", icon: Gauge },
   { label: "Vendors", href: "/vendors", icon: Briefcase },
   { label: "Vendor pipeline", href: "/vendor-pipeline", icon: GitMerge },
   { label: "AI Advisor", href: "/ai-advisor", icon: BrainCircuit, isAi: true },

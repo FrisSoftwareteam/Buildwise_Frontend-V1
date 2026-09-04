@@ -87,13 +87,17 @@ export function softwareNavHrefs(role?: string | null): string[] {
     case "vendor":
       return ["/software", "/projects", "/vendors", "/vendor-pipeline"];
     case "developer":
-      return ["/software", "/projects", "/board", "/backlog", "/sprints", "/ai-advisor"];
+      return ["/software", "/projects", "/board", "/backlog", "/sprints", "/kpis", "/ai-advisor"];
     default:
-      return ["/software", "/projects", "/board", "/backlog", "/sprints", "/vendors", "/vendor-pipeline", "/ai-advisor"];
+      return ["/software", "/projects", "/board", "/backlog", "/sprints", "/kpis", "/vendors", "/vendor-pipeline", "/ai-advisor"];
   }
 }
 
-const SOFTWARE_PREFIXES = ["/software", "/projects", "/board", "/backlog", "/sprints", "/vendors", "/vendor-pipeline", "/ai-advisor"];
+export function canViewKpis(role?: string | null) {
+  return canPlanSprints(role);
+}
+
+const SOFTWARE_PREFIXES = ["/software", "/projects", "/board", "/backlog", "/sprints", "/kpis", "/vendors", "/vendor-pipeline", "/ai-advisor"];
 const GOVERNANCE_PREFIXES = ["/governance", "/agm", "/operations", "/playbooks"];
 
 export function isSoftwareRouteAllowed(pathname: string, role?: string | null) {

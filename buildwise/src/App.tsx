@@ -17,6 +17,7 @@ import VendorPipeline from "@/pages/VendorPipeline";
 import BoardView from "@/pages/BoardView";
 import Backlog from "@/pages/Backlog";
 import Sprints from "@/pages/Sprints";
+import KPIs from "@/pages/KPIs";
 import Team from "@/pages/Team";
 import AIAdvisor from "@/pages/AIAdvisor";
 import Login from "@/pages/Login";
@@ -82,6 +83,7 @@ function ProtectedRouter() {
               <Route path="/board" component={BoardView} />
               <Route path="/backlog" component={Backlog} />
               <Route path="/sprints" component={Sprints} />
+              <Route path="/kpis" component={KPIs} />
               <Route path="/vendors" component={Vendors} />
               <Route path="/vendor-pipeline" component={VendorPipeline} />
               <Route path="/operations" component={OperationsCenter} />
