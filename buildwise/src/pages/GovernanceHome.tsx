@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Card, Badge, Button } from "@/components/ui/shared";
 import { useOperationsSummary } from "@/lib/operations-api";
-import { Landmark, Loader2, ScrollText, Shield } from "lucide-react";
+import { Landmark, Loader2, Mail, ScrollText, Shield } from "lucide-react";
 
 export default function GovernanceHome() {
   const summaryQuery = useOperationsSummary();
@@ -30,9 +30,10 @@ export default function GovernanceHome() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
           { label: "Active meetings", value: summary?.activeMeetings ?? 0, href: "/agm", icon: Landmark },
+          { label: "AGM requests in progress", value: summary?.openEngagements ?? 0, href: "/agm/requests", icon: Mail },
           { label: "Open alerts", value: summary?.openAlerts ?? 0, href: "/operations", icon: Shield },
           { label: "Open actions", value: summary?.openActions ?? 0, href: "/operations", icon: ScrollText },
         ].map((item) => {
@@ -51,12 +52,18 @@ export default function GovernanceHome() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-6 border-white/5 space-y-3">
           <Badge variant="outline" className="border-[#c4a747]/30 text-[#c4a747]">Issuer meetings</Badge>
           <p className="text-white font-semibold">Notice, quorum, voting, minutes</p>
           <p className="text-sm text-slate-400">Open the meeting workspace for a statutory AGM or EGM.</p>
           <Link href="/agm"><Button variant="outline">Open meetings</Button></Link>
+        </Card>
+        <Card className="p-6 border-white/5 space-y-3">
+          <Badge variant="outline" className="border-[#c4a747]/30 text-[#c4a747]">AGM requests</Badge>
+          <p className="text-white font-semibold">Client intake to logistics &amp; proxy capture</p>
+          <p className="text-sm text-slate-400">Run the 13-step pipeline before an AGM goes live.</p>
+          <Link href="/agm/requests"><Button variant="outline">Open pipeline</Button></Link>
         </Card>
         <Card className="p-6 border-white/5 space-y-3">
           <Badge variant="outline">Operations Center</Badge>

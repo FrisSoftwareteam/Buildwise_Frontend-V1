@@ -11,6 +11,7 @@ import {
   Settings,
   Shield,
   Landmark,
+  Mail,
   ScrollText,
   Gauge,
   type LucideIcon,
@@ -44,6 +45,7 @@ export const SOFTWARE_NAV: NavItem[] = [
 export const GOVERNANCE_NAV: NavItem[] = [
   { label: "Overview", href: GOVERNANCE_HOME, icon: LayoutDashboard },
   { label: "Issuer meetings", href: "/agm", icon: Landmark },
+  { label: "AGM requests", href: "/agm/requests", icon: Mail },
   { label: "Operations Center", href: "/operations", icon: Shield },
   { label: "Playbooks & Time", href: "/playbooks", icon: ScrollText },
 ];
@@ -71,7 +73,7 @@ export const PORTALS: Record<PortalId, { label: string; home: string; tagline: s
 };
 
 function pathMatches(location: string, href: string) {
-  if (href === SOFTWARE_HOME || href === GOVERNANCE_HOME) {
+  if (href === SOFTWARE_HOME || href === GOVERNANCE_HOME || href === "/agm") {
     return location === href;
   }
   return location === href || location.startsWith(`${href}/`);

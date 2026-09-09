@@ -13,6 +13,7 @@ function pageTitle(location: string) {
   if (location === "/") return "Portals";
   if (location === "/software") return "Software portal";
   if (location === "/governance") return "Governance portal";
+  if (location === "/agm/requests" || location.startsWith("/agm/requests/")) return "AGM requests";
   const parts = location.split("/").filter(Boolean);
   const titles: Record<string, string> = {
     projects: parts[1] ? "Software product" : "Software products",

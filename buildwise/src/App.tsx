@@ -25,6 +25,7 @@ import OAuthCallback from "@/pages/OAuthCallback";
 import Settings from "@/pages/Settings";
 import OperationsCenter from "@/pages/OperationsCenter";
 import AgmOperations from "@/pages/AgmOperations";
+import AgmEngagements from "@/pages/AgmEngagements";
 import Playbooks from "@/pages/Playbooks";
 
 const queryClient = new QueryClient({
@@ -88,6 +89,7 @@ function ProtectedRouter() {
               <Route path="/vendor-pipeline" component={VendorPipeline} />
               <Route path="/operations" component={OperationsCenter} />
               <Route path="/agm" component={AgmOperations} />
+              <Route path="/agm/requests" component={AgmEngagements} />
               <Route path="/playbooks" component={Playbooks} />
               <Route path="/team" component={Team} />
               <Route path="/ai-advisor" component={AIAdvisor} />

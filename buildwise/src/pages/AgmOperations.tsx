@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Card, Badge, Button, Dialog, Input } from "@/components/ui/shared";
 import { getStatusColor } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -100,12 +101,15 @@ export default function AgmOperations() {
               ))}
             </div>
           </div>
-          {governor && (
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              New meeting
-            </Button>
-          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Link href="/agm/requests"><Button variant="outline">AGM request pipeline</Button></Link>
+            {governor && (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New meeting
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

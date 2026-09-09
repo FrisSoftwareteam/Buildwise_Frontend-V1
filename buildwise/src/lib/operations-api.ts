@@ -21,6 +21,7 @@ export type OperationsSummary = {
   activePlaybooks: number;
   minutesLogged: number;
   openActions: number;
+  openEngagements: number;
 };
 
 export type AgmMeeting = {
@@ -102,6 +103,118 @@ export type AgmResolution = {
   votesAbstain: number;
 };
 
+export type AgmEngagementTimelineEntry = {
+  step: number;
+  status: string;
+  actor: string;
+  action: string;
+  detail: string;
+  at: string;
+};
+
+export type AgmEngagementStaff = {
+  name: string;
+  email: string;
+  role: string;
+  notifiedAt?: string | null;
+};
+
+export type AgmEngagementItem = {
+  description: string;
+  addedBy: string;
+  addedAt: string;
+};
+
+export type AgmEngagement = {
+  id: number;
+  clientCompany: string;
+  contactName: string;
+  contactEmail?: string | null;
+  submittedBy: string;
+  meetingFormat: "physical" | "virtual";
+  meetingDate: string;
+  meetingTime: string;
+  venue?: string | null;
+  meetingLink?: string | null;
+  meetingPassword?: string | null;
+  notes?: string | null;
+  step: number;
+  status: string;
+  loggedBy?: string | null;
+  loggedAt?: string | null;
+  venueInspection: {
+    status: string;
+    initiatedBy?: string | null;
+    initiatedAt?: string | null;
+    notified: string[];
+    notes?: string | null;
+  };
+  dividendPosition: {
+    status: string;
+    setBy?: string | null;
+    setAt?: string | null;
+    notes?: string | null;
+  };
+  departmentsNotified: {
+    departments: string[];
+    notifiedBy?: string | null;
+    notifiedAt?: string | null;
+  };
+  demandNotice: {
+    status: string;
+    designatedAccount?: string | null;
+    preparedBy?: string | null;
+    sentBy?: string | null;
+    senderEmail?: string | null;
+    sentAt?: string | null;
+  };
+  itBriefing: {
+    status: string;
+    requestedBy?: string | null;
+    requestedAt?: string | null;
+    infoReceivedAt?: string | null;
+  };
+  staffAssigned: AgmEngagementStaff[];
+  itemsRequired: AgmEngagementItem[];
+  approval: {
+    status: string;
+    approvers: string[];
+    requestedBy?: string | null;
+    requestedAt?: string | null;
+    decidedBy?: string | null;
+    decidedAt?: string | null;
+    reason?: string | null;
+    rounds: number;
+  };
+  logistics: {
+    status: string;
+    recipients: string[];
+    sentBy?: string | null;
+    sentAt?: string | null;
+  };
+  proxyForm: {
+    status: string;
+    capturedCount: number;
+    updatedBy?: string | null;
+    updatedAt?: string | null;
+  };
+  timeline: AgmEngagementTimelineEntry[];
+  linkedMeetingId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AgmEngagementsSummary = {
+  total: number;
+  byStep: Record<number, number>;
+  stepLabels: Record<number, string>;
+  rejected: number;
+  ready: number;
+  onBoard: number;
+  live: AgmMeeting[];
+  upcoming: AgmEngagement[];
+};
+
 export type OpsAlert = {
   id: number;
   severity: string;
@@ -148,6 +261,9 @@ const keys = {
   workspace: (id: number) => ["agm-workspace", id] as const,
   resolutions: ["agm-resolutions"] as const,
   actions: ["agm-actions"] as const,
+  engagements: ["agm-engagements"] as const,
+  engagement: (id: number) => ["agm-engagement", id] as const,
+  engagementsSummary: ["agm-engagements-summary"] as const,
   playbooks: ["playbooks"] as const,
   timeLogs: ["time-logs"] as const,
 };
@@ -339,4 +455,109 @@ export function useCreateTimeLog() {
       void queryClient.invalidateQueries({ queryKey: keys.summary });
     },
   });
+}
+export function useAgmEngagements() {
+  return useQuery({ queryKey: keys.engagements, queryFn: () => api<AgmEngagement[]>("/api/agm/engagements") });
+}
+
+export function useAgmEngagement(id: number | null) {
+  return useQuery({
+    queryKey: keys.engagement(id || 0),
+    queryFn: () => api<AgmEngagement>(`/api/agm/engagements/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useAgmEngagementsSummary() {
+  return useQuery({ queryKey: keys.engagementsSummary, queryFn: () => api<AgmEngagementsSummary>("/api/agm/engagements/summary") });
+}
+
+function useAgmEngagementAction(path: (id: number) => string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Record<string, unknown>) =>
+      api<AgmEngagement>(path(id), { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: keys.engagements });
+      void queryClient.invalidateQueries({ queryKey: keys.engagement(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: keys.engagementsSummary });
+      void queryClient.invalidateQueries({ queryKey: keys.meetings });
+      void queryClient.invalidateQueries({ queryKey: keys.summary });
+    },
+  });
+}
+
+export function useCreateAgmEngagement() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      clientCompany: string;
+      contactName: string;
+      contactEmail?: string;
+      submittedBy: string;
+      meetingFormat: "physical" | "virtual";
+      meetingDate: string;
+      meetingTime: string;
+      venue?: string;
+      meetingLink?: string;
+      meetingPassword?: string;
+      notes?: string;
+    }) => api<AgmEngagement>("/api/agm/engagements", { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: keys.engagements });
+      void queryClient.invalidateQueries({ queryKey: keys.engagementsSummary });
+    },
+  });
+}
+
+export function useLogAgmEngagement() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/log`);
+}
+
+export function useInitiateAgmVenueInspection() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/venue-inspection`);
+}
+
+export function useCompleteAgmVenueInspection() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/venue-inspection/complete`);
+}
+
+export function useSetAgmDividendPosition() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/dividend`);
+}
+
+export function useNotifyAgmDepartments() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/notify-departments`);
+}
+
+export function useSendAgmDemandNotice() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/demand-notice`);
+}
+
+export function useRequestAgmItBriefing() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/it-briefing`);
+}
+
+export function useAssignAgmStaff() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/staff`);
+}
+
+export function useSubmitAgmItems() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/items`);
+}
+
+export function useDecideAgmApproval() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/approval`);
+}
+
+export function useSendAgmLogisticsPack() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/logistics`);
+}
+
+export function useRecordAgmProxyCapture() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/proxy`);
+}
+
+export function useSendAgmEngagementToBoard() {
+  return useAgmEngagementAction((id) => `/api/agm/engagements/${id}/send-to-board`);
 }
