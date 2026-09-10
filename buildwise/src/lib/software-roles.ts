@@ -44,6 +44,20 @@ export function canSetProductLifecycle(role?: string | null) {
   return hasLeadAccess(role);
 }
 
+type ProjectPermissionUser = { role?: string | null; email?: string | null } | null | undefined;
+
+// Admins/managers can move a software product between lifecycle states,
+// including reopening one that was already marked completed (e.g. back to
+// in-progress or on hold for another look).
+export function canManageProjectLifecycle(user?: ProjectPermissionUser) {
+  return hasLeadAccess(user?.role);
+}
+
+// Admins/managers can permanently delete a software product.
+export function canDeleteProject(user?: ProjectPermissionUser) {
+  return hasLeadAccess(user?.role);
+}
+
 export function canPlanSprints(role?: string | null) {
   const value = softwareRole(role);
   return value === "admin" || value === "manager" || value === "developer";

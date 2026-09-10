@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { useListProjects, useCreateProject, useListUsers, useUpdateProject } from "@workspace/api-client-react";
+import { useListProjects, useCreateProject, useListUsers, useUpdateProject, useDeleteProject } from "@workspace/api-client-react";
 import { Button, Badge, Input, Dialog } from "@/components/ui/shared";
 import { getStatusColor, formatCurrency } from "@/lib/utils";
 import { productKindBadgeClass, productKindLabel, PRODUCT_KINDS, isContinuousKind, isProductClosed, productStatusLabel } from "@/lib/product-kind";
 import type { Project } from "@workspace/api-client-react";
-import { Plus, Search, Building2, Loader2, ArrowDownWideNarrow, PauseCircle, CheckCircle2, Play } from "lucide-react";
+import { Plus, Search, Building2, Loader2, ArrowDownWideNarrow, PauseCircle, CheckCircle2, Play, Clock, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { useRefreshQueries } from "@/lib/refresh-queries";
 import { useAuth } from "@/context/AuthContext";
-import { canCreateSoftwareProduct, canSetProductLifecycle } from "@/lib/software-roles";
+import { canCreateSoftwareProduct, canManageProjectLifecycle, canDeleteProject } from "@/lib/software-roles";
 import { productLifecyclePatch } from "@/lib/project-lifecycle";
 import { formatContributor, sanitizeContributors, type ProjectContributor } from "@/lib/developer-work";
 import { ContributorsEditor } from "@/components/ContributorsEditor";
@@ -26,18 +26,25 @@ function ProductTable({
   projects,
   onOpen,
   canLifecycle,
+  canDelete,
   pendingId,
+  deletePendingId,
   onSetLifecycle,
+  onDelete,
 }: {
   projects: Project[];
   onOpen: (id: number) => void;
   canLifecycle: boolean;
+  canDelete: boolean;
   pendingId?: number | null;
-  onSetLifecycle: (project: Project, status: "inactive" | "completed" | "in_progress") => void;
+  deletePendingId?: number | null;
+  onSetLifecycle: (project: Project, status: "inactive" | "completed" | "in_progress" | "on_hold") => void;
+  onDelete: (project: Project) => void;
 }) {
+  const showActions = canLifecycle || canDelete;
   return (
     <div className="rounded-xl border border-white/10 overflow-x-auto">
-          <table className={`w-full ${canLifecycle ? "min-w-[1480px]" : "min-w-[1320px]"} text-left text-sm`}>
+          <table className={`w-full ${showActions ? "min-w-[1480px]" : "min-w-[1320px]"} text-left text-sm`}>
             <thead className="bg-black/40 text-[11px] uppercase tracking-[0.16em] text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium w-16">S/N</th>
@@ -50,7 +57,7 @@ function ProductTable({
                 <th className="px-4 py-3 font-medium w-32">Completed</th>
                 <th className="px-4 py-3 font-medium w-36 text-right">Completion</th>
                 <th className="px-4 py-3 font-medium w-40 text-right">Cost till date</th>
-                {canLifecycle && <th className="px-4 py-3 font-medium w-48">Actions</th>}
+                {showActions && <th className="px-4 py-3 font-medium w-48">Actions</th>}
               </tr>
             </thead>
         <tbody className="divide-y divide-white/5">
@@ -113,10 +120,10 @@ function ProductTable({
                 <td className="px-4 py-3 align-top text-right text-white text-xs font-medium whitespace-nowrap">
                   {formatCurrency(totalExpense(project))}
                 </td>
-                {canLifecycle && (
+                {showActions && (
                   <td className="px-4 py-3 align-top" onClick={(event) => event.stopPropagation()}>
                     <div className="flex flex-col gap-1.5">
-                      {project.status !== "inactive" && (
+                      {canLifecycle && project.status !== "inactive" && (
                         <Button
                           type="button"
                           variant="outline"
@@ -129,7 +136,7 @@ function ProductTable({
                           Inactive
                         </Button>
                       )}
-                      {project.status !== "completed" && (
+                      {canLifecycle && project.status !== "completed" && (
                         <Button
                           type="button"
                           variant="outline"
@@ -142,7 +149,20 @@ function ProductTable({
                           Completed
                         </Button>
                       )}
-                      {closed && (
+                      {canLifecycle && closed && project.status !== "on_hold" && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[11px]"
+                          disabled={pendingId === project.id}
+                          onClick={() => onSetLifecycle(project, "on_hold")}
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          Under review
+                        </Button>
+                      )}
+                      {canLifecycle && closed && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -153,6 +173,19 @@ function ProductTable({
                         >
                           <Play className="w-3 h-3 mr-1" />
                           Reactivate
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          disabled={deletePendingId === project.id}
+                          onClick={() => onDelete(project)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Delete
                         </Button>
                       )}
                     </div>
@@ -170,7 +203,8 @@ function ProductTable({
 export default function Projects() {
   const { user } = useAuth();
   const canCreate = canCreateSoftwareProduct(user?.role);
-  const canLifecycle = canSetProductLifecycle(user?.role);
+  const canLifecycle = canManageProjectLifecycle(user);
+  const canDelete = canDeleteProject(user);
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -196,6 +230,13 @@ export default function Projects() {
       },
     },
   });
+  const deleteMutation = useDeleteProject({
+    mutation: {
+      onSuccess: async () => {
+        await refresh(projectsQuery.queryKey);
+      },
+    },
+  });
 
   const filteredProjects = projects?.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -207,12 +248,20 @@ export default function Projects() {
   const tableProps = {
     onOpen: (id: number) => setLocation(`/projects/${id}`),
     canLifecycle,
+    canDelete,
     pendingId: updateMutation.isPending ? updateMutation.variables?.id ?? null : null,
-    onSetLifecycle: (project: Project, status: "inactive" | "completed" | "in_progress") => {
+    deletePendingId: deleteMutation.isPending ? deleteMutation.variables?.id ?? null : null,
+    onSetLifecycle: (project: Project, status: "inactive" | "completed" | "in_progress" | "on_hold") => {
       updateMutation.mutate({
         id: project.id,
         data: productLifecyclePatch(status, project),
       });
+    },
+    onDelete: (project: Project) => {
+      if (!window.confirm(`Delete "${project.name}"? This permanently removes the product record and its uploaded documents. This cannot be undone.`)) {
+        return;
+      }
+      deleteMutation.mutate({ id: project.id });
     },
   };
 

@@ -1,6 +1,14 @@
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useKpis, type UserKpiMetrics } from "@/lib/kpi-api";
 import { Card, CardContent, CardHeader, CardTitle, Badge } from "@/components/ui/shared";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   AlertCircle,
   CheckCircle2,
@@ -65,7 +73,7 @@ function PersonalKpis({ metrics }: { metrics: UserKpiMetrics }) {
           label="Tasks completed"
           value={metrics.completed}
           accent="bg-emerald-500/20 text-emerald-500"
-          sublabel={`${metrics.completedLast30d} in the last 30 days`}
+          sublabel={`${metrics.completedLast30d} in last 30 days · ${metrics.inProgress} in progress`}
         />
         <StatCard
           icon={Layers}
@@ -135,6 +143,7 @@ export default function KPIs() {
   const role = softwareRole(user?.role);
   const showLeaderboard = role === "admin" || role === "manager";
   const { data, isLoading, isError } = useKpis(user?.id ?? null);
+  const [selectedDeveloper, setSelectedDeveloper] = useState<UserKpiMetrics | null>(null);
 
   if (isLoading) {
     return <div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -234,6 +243,7 @@ export default function KPIs() {
                         <th className="py-2 pr-4 font-medium">Name</th>
                         <th className="py-2 pr-4 font-medium">Role</th>
                         <th className="py-2 pr-4 font-medium text-right">Completed</th>
+                        <th className="py-2 pr-4 font-medium text-right">In Progress</th>
                         <th className="py-2 pr-4 font-medium text-right">WIP</th>
                         <th className="py-2 pr-4 font-medium text-right">Overdue</th>
                         <th className="py-2 pr-4 font-medium text-right">On-time</th>
@@ -242,12 +252,17 @@ export default function KPIs() {
                     </thead>
                     <tbody>
                       {leaderboard.map((row) => (
-                        <tr key={row.userId} className="border-b border-white/5 last:border-0">
+                        <tr
+                          key={row.userId}
+                          onClick={() => setSelectedDeveloper(row)}
+                          className="border-b border-white/5 last:border-0 cursor-pointer hover:bg-white/5 transition-colors"
+                        >
                           <td className="py-3 pr-4 text-white font-medium">{row.name}</td>
                           <td className="py-3 pr-4">
                             <Badge variant="outline">{softwareRoleLabel(row.role)}</Badge>
                           </td>
                           <td className="py-3 pr-4 text-right text-white">{row.completed}</td>
+                          <td className="py-3 pr-4 text-right text-amber-300">{row.inProgress}</td>
                           <td className="py-3 pr-4 text-right text-slate-300">{row.wip}</td>
                           <td className="py-3 pr-4 text-right">
                             {row.overdue > 0 ? (
@@ -262,6 +277,7 @@ export default function KPIs() {
                       ))}
                     </tbody>
                   </table>
+                  <p className="text-xs text-slate-500 mt-2">Ranked by completed + in-progress tasks. Click a developer to see their full breakdown.</p>
                 </div>
               )}
             </CardContent>
@@ -277,6 +293,25 @@ export default function KPIs() {
           <p className="text-slate-500 text-sm">No tasks are assigned to you yet.</p>
         )}
       </div>
+
+      <Dialog open={selectedDeveloper !== null} onOpenChange={(open) => !open && setSelectedDeveloper(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          {selectedDeveloper && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {selectedDeveloper.name}
+                  <Badge variant="outline">{softwareRoleLabel(selectedDeveloper.role)}</Badge>
+                </DialogTitle>
+                <DialogDescription>
+                  KPIs based on tasks completed by {selectedDeveloper.name}.
+                </DialogDescription>
+              </DialogHeader>
+              <PersonalKpis metrics={selectedDeveloper} />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

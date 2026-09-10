@@ -31,6 +31,7 @@ export type UserKpiMetrics = {
   completedLast30d: number;
   active: number;
   wip: number;
+  inProgress: number;
   overdue: number;
   onTimeRate: number | null;
   storyPointsDelivered: number;

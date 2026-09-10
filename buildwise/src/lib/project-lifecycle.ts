@@ -5,7 +5,7 @@ export function todayIsoDate() {
 }
 
 export function productLifecyclePatch(
-  status: "inactive" | "completed" | "in_progress",
+  status: "inactive" | "completed" | "in_progress" | "on_hold",
   project: Pick<Project, "endDate">,
 ): UpdateProjectBody {
   if (status === "completed") {
@@ -21,5 +21,13 @@ export function productLifecyclePatch(
       endDate: project.endDate || todayIsoDate(),
     };
   }
-  return { status: "in_progress" };
+  if (status === "on_hold") {
+    // Reopen a closed product into review/on-hold rather than straight back
+    // to active work. Clears the completed-date since the product is no
+    // longer considered finished.
+    return { status: "on_hold", endDate: null };
+  }
+  // Reopening back to active work also clears a stale completed-date left
+  // over from when the product was previously marked completed/inactive.
+  return { status: "in_progress", endDate: null };
 }

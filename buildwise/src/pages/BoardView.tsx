@@ -1,7 +1,7 @@
 import { type Task, useCreateTask, useDeleteTask, useListTasks, useListProjects, useUpdateTask } from "@workspace/api-client-react";
 import { Card, Badge, Button, Dialog, Input } from "@/components/ui/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Trello, MoreHorizontal, Trash2, CalendarClock } from "lucide-react";
+import { Loader2, Trello, MoreHorizontal, Trash2, CalendarClock, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRefreshQueries } from "@/lib/refresh-queries";
 import { useAuth } from "@/context/AuthContext";
@@ -16,18 +16,32 @@ const BOARD_COUMNS = [
   { id: 'done', label: 'Done', color: 'border-emerald-500' },
 ];
 
+function readUrlParam(name: string): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get(name);
+}
+
 export default function BoardView() {
   const { user } = useAuth();
   const canWork = canWorkBoard(user?.role);
   const { data: projects } = useListProjects();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(() => {
+    const projectParam = readUrlParam("project");
+    return projectParam ? Number(projectParam) : null;
+  });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [timelineTask, setTimelineTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [defaultStatus, setDefaultStatus] = useState("backlog");
   const [boardTasks, setBoardTasks] = useState<Task[]>([]);
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [dropTargetStatus, setDropTargetStatus] = useState<string | null>(null);
-  
+  const [sprintFilterId, setSprintFilterId] = useState<number | null>(() => {
+    const sprintParam = readUrlParam("sprint");
+    return sprintParam ? Number(sprintParam) : null;
+  });
+  const [sprintFilterName] = useState<string | null>(() => readUrlParam("sprintName"));
+
   // Default to first project if none selected
   const activeProjectId = selectedProjectId || projects?.[0]?.id;
   const tasksQuery = useListTasks(activeProjectId || 0, { query: { enabled: !!activeProjectId } });
@@ -133,7 +147,7 @@ export default function BoardView() {
           <p className="text-slate-400 text-sm mt-1">Kanban for a software product. Issuer meetings are under Governance.</p>
         </div>
         <div>
-          <select 
+          <select
             className="h-10 rounded-lg border border-white/10 bg-black/40 px-4 text-white focus:ring-2 focus:ring-primary focus:outline-none min-w-[200px]"
             value={activeProjectId || ''}
             onChange={(e) => setSelectedProjectId(Number(e.target.value))}
@@ -145,14 +159,30 @@ export default function BoardView() {
         </div>
       </div>
 
+      {sprintFilterId != null && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 shrink-0">
+          <span className="text-sm text-primary">
+            Showing only tasks in <span className="font-semibold">{sprintFilterName || `Sprint ${sprintFilterId}`}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setSprintFilterId(null)}
+            className="flex items-center gap-1 text-xs text-primary/80 hover:text-primary transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+            Clear filter
+          </button>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex-1 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
       ) : (
         <div className="flex-1 overflow-x-auto pb-6">
           <div className="flex gap-4 h-[calc(100vh-12rem)] min-w-max px-2">
             {BOARD_COUMNS.map((col) => {
-              const colTasks = boardTasks?.filter(t => t.status === col.id) || [];
-              
+              const colTasks = boardTasks?.filter(t => t.status === col.id && (sprintFilterId == null || t.sprintId === sprintFilterId)) || [];
+
               return (
                 <div
                   key={col.id}
@@ -186,7 +216,7 @@ export default function BoardView() {
                       <Badge variant="secondary" className="bg-white/5 text-slate-400">{colTasks.length}</Badge>
                     </div>
                   </div>
-                  
+
                   <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-hide">
                     {colTasks.map((task) => (
                       <Card
@@ -194,7 +224,8 @@ export default function BoardView() {
                         draggable={canWork}
                         onDragStart={() => handleDragStart(task.id)}
                         onDragEnd={handleDragEnd}
-                        className={`p-3 bg-card hover:bg-slate-800 border-white/5 hover:border-primary/30 transition-all shadow-md group cursor-grab active:cursor-grabbing ${
+                        onClick={() => setViewingTask(task)}
+                        className={`p-3 bg-card hover:bg-slate-800 border-white/5 hover:border-primary/30 transition-all shadow-md group cursor-pointer active:cursor-grabbing ${
                           draggedTaskId === task.id ? "opacity-60" : ""
                         }`}
                       >
@@ -207,12 +238,13 @@ export default function BoardView() {
                             <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
+                                onClick={(e) => e.stopPropagation()}
                                 className="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuContent align="end" className="w-44" onClick={(e) => e.stopPropagation()}>
                               <DropdownMenuItem onSelect={() => setTimelineTask(task)}>
                                 <CalendarClock className="w-4 h-4" />
                                 Set timeline
@@ -232,7 +264,7 @@ export default function BoardView() {
                         <div className="mb-3">
                           <TaskTimelineBadge dueDate={task.dueDate} status={task.status} />
                         </div>
-                        
+
                         <div className="flex justify-between items-center mt-2">
                           <div className="flex -space-x-2">
                              <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center text-[10px] font-bold text-primary">JD</div>
@@ -243,7 +275,7 @@ export default function BoardView() {
                         </div>
                       </Card>
                     ))}
-                    
+
                     {canWork && (
                     <Button
                       variant="ghost"
@@ -397,6 +429,36 @@ export default function BoardView() {
             <Button type="submit">Save timeline</Button>
           </div>
         </form>
+      </Dialog>
+
+      <Dialog isOpen={!!viewingTask} onClose={() => setViewingTask(null)} title={viewingTask?.title || "Task details"}>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="text-[10px] uppercase text-slate-400 border-slate-700 bg-slate-800">
+              {viewingTask?.type}
+            </Badge>
+            <Badge variant="secondary" className="text-[10px] uppercase bg-white/5 text-slate-300">
+              {BOARD_COUMNS.find((column) => column.id === viewingTask?.status)?.label || viewingTask?.status}
+            </Badge>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">Description</p>
+            <p className="text-sm text-slate-300 whitespace-pre-wrap">
+              {viewingTask?.description || "No description provided."}
+            </p>
+          </div>
+          <div className="flex justify-between items-center text-xs text-slate-500 pt-3 border-t border-white/5">
+            <TaskTimelineBadge dueDate={viewingTask?.dueDate} status={viewingTask?.status} />
+            {viewingTask?.storyPoints && (
+              <span className="font-mono bg-slate-800 text-slate-400 px-1.5 rounded">{viewingTask.storyPoints} pts</span>
+            )}
+          </div>
+          <div className="pt-2 flex justify-end">
+            <Button type="button" variant="ghost" onClick={() => setViewingTask(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

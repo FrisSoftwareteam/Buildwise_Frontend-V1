@@ -1,13 +1,18 @@
+import { CalendarRange, Flag, ListChecks, Loader2, Plus, TimerReset, Trash2, Trello } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import {
+  type Task,
   useCreateSprint,
+  useDeleteSprint,
   useListProjects,
   useListSprints,
+  useListTasks,
   useUpdateSprint,
 } from "@workspace/api-client-react";
 import { Badge, Button, Card, Dialog, Input } from "@/components/ui/shared";
 import { productKindLabel } from "@/lib/product-kind";
-import { format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { useRefreshQueries } from "@/lib/refresh-queries";
 import { useAuth } from "@/context/AuthContext";
 import { canPlanSprints } from "@/lib/software-roles";
@@ -26,6 +31,23 @@ export default function Sprints() {
     query: { enabled: !!activeProjectId },
   });
   const { data: sprints, isLoading: sprintsLoading } = sprintsQuery;
+
+  const tasksQuery = useListTasks(activeProjectId || 0, undefined, {
+    query: { enabled: !!activeProjectId },
+  });
+  const { data: projectTasks } = tasksQuery;
+
+  const tasksBySprintId = useMemo(() => {
+    const map = new Map<number, Task[]>();
+    for (const task of projectTasks ?? []) {
+      if (!task.sprintId) continue;
+      const list = map.get(task.sprintId) ?? [];
+      list.push(task);
+      map.set(task.sprintId, list);
+    }
+    return map;
+  }, [projectTasks]);
+
   const refresh = useRefreshQueries();
 
   const createSprintMutation = useCreateSprint({
@@ -41,6 +63,15 @@ export default function Sprints() {
     mutation: {
       onSuccess: async () => {
         await refresh(sprintsQuery.queryKey);
+      },
+    },
+  });
+
+  const deleteSprintMutation = useDeleteSprint({
+    mutation: {
+      onSuccess: async () => {
+        await refresh(sprintsQuery.queryKey);
+        await refresh(tasksQuery.queryKey);
       },
     },
   });
@@ -128,78 +159,138 @@ export default function Sprints() {
         </div>
       ) : sprints && sprints.length > 0 ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {sprints.map((sprint) => (
-            <Card key={sprint.id} className="p-5 border-white/5 bg-card/90">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2">
+          {sprints.map((sprint) => {
+            const sprintTasks = tasksBySprintId.get(sprint.id) ?? [];
+            const doneTasks = sprintTasks.filter((task) => task.status === "done").length;
+            const totalPoints = sprintTasks.reduce((sum, task) => sum + (task.storyPoints ?? 0), 0);
+            const donePoints = sprintTasks
+              .filter((task) => task.status === "done")
+              .reduce((sum, task) => sum + (task.storyPoints ?? 0), 0);
+            const progressPct = sprintTasks.length > 0 ? Math.round((doneTasks / sprintTasks.length) * 100) : 0;
+
+            let daysLabel: string | null = null;
+            let isOverdue = false;
+            if (sprint.status === "active" && sprint.endDate) {
+              const days = differenceInCalendarDays(new Date(sprint.endDate), new Date());
+              isOverdue = days < 0;
+              daysLabel = days >= 0 ? `${days} day${days === 1 ? "" : "s"} left` : `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} overdue`;
+            }
+
+            return (
+              <Card key={sprint.id} className="p-5 border-white/5 bg-card/90">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={
+                          sprint.status === "active"
+                            ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                            : sprint.status === "completed"
+                              ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
+                              : "border-amber-500/30 text-amber-300 bg-amber-500/10"
+                        }
+                      >
+                        {sprint.status}
+                      </Badge>
+                      <span className="text-xs text-slate-500">SPR-{sprint.id}</span>
+                      {daysLabel && (
+                        <span className={`text-xs ${isOverdue ? "text-red-400" : "text-slate-400"}`}>{daysLabel}</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-lg font-semibold text-white">{sprint.name}</h4>
+                      <p className="text-sm text-slate-400 mt-1">{sprint.goal || "No sprint goal added yet."}</p>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={
-                        sprint.status === "active"
-                          ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                          : sprint.status === "completed"
-                            ? "border-blue-500/30 text-blue-400 bg-blue-500/10"
-                            : "border-amber-500/30 text-amber-300 bg-amber-500/10"
-                      }
+                    <Link
+                      href={`/board?project=${activeProjectId}&sprint=${sprint.id}&sprintName=${encodeURIComponent(sprint.name)}`}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                      aria-label="View sprint on board"
+                      title="View on board"
                     >
-                      {sprint.status}
-                    </Badge>
-                    <span className="text-xs text-slate-500">SPR-{sprint.id}</span>
+                      <Trello className="w-4 h-4" />
+                    </Link>
+                    {canPlan && (
+                      <>
+                        <select
+                          value={sprint.status}
+                          onChange={(e) =>
+                            updateSprintMutation.mutate({
+                              id: sprint.id,
+                              data: {
+                                name: sprint.name,
+                                goal: sprint.goal,
+                                status: e.target.value as "planned" | "active" | "completed",
+                                startDate: sprint.startDate,
+                                endDate: sprint.endDate,
+                              },
+                            })
+                          }
+                          className="h-10 rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-white focus:ring-2 focus:ring-primary focus:outline-none"
+                        >
+                          <option value="planned">Planned</option>
+                          <option value="active">Active</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                          onClick={() => deleteSprintMutation.mutate({ id: sprint.id })}
+                          aria-label="Delete sprint"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
+                </div>
 
+                <div className="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-white/5">
                   <div>
-                    <h4 className="text-lg font-semibold text-white">{sprint.name}</h4>
-                    <p className="text-sm text-slate-400 mt-1">{sprint.goal || "No sprint goal added yet."}</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500 flex items-center gap-1.5">
+                      <CalendarRange className="w-3 h-3" />
+                      Start Date
+                    </p>
+                    <p className="text-sm text-white mt-1">
+                      {sprint.startDate ? format(new Date(sprint.startDate), "MMM d, yyyy") : "Not set"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500 flex items-center gap-1.5">
+                      <Flag className="w-3 h-3" />
+                      End Date
+                    </p>
+                    <p className="text-sm text-white mt-1">
+                      {sprint.endDate ? format(new Date(sprint.endDate), "MMM d, yyyy") : "Not set"}
+                    </p>
                   </div>
                 </div>
 
-                {canPlan ? (
-                <select
-                  value={sprint.status}
-                  onChange={(e) =>
-                    updateSprintMutation.mutate({
-                      id: sprint.id,
-                      data: {
-                        name: sprint.name,
-                        goal: sprint.goal,
-                        status: e.target.value as "planned" | "active" | "completed",
-                        startDate: sprint.startDate,
-                        endDate: sprint.endDate,
-                      },
-                    })
-                  }
-                  className="h-10 rounded-lg border border-white/10 bg-black/40 px-3 text-sm text-white focus:ring-2 focus:ring-primary focus:outline-none"
-                >
-                  <option value="planned">Planned</option>
-                  <option value="active">Active</option>
-                  <option value="completed">Completed</option>
-                </select>
-                ) : null}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-white/5">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500 flex items-center gap-1.5">
-                    <CalendarRange className="w-3 h-3" />
-                    Start Date
-                  </p>
-                  <p className="text-sm text-white mt-1">
-                    {sprint.startDate ? format(new Date(sprint.startDate), "MMM d, yyyy") : "Not set"}
-                  </p>
+                <div className="mt-4 pt-4 border-t border-white/5">
+                  <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <ListChecks className="w-3.5 h-3.5" />
+                      {sprintTasks.length > 0
+                        ? `${doneTasks}/${sprintTasks.length} tasks · ${donePoints}/${totalPoints} pts`
+                        : "No tasks assigned to this sprint yet"}
+                    </span>
+                    {sprintTasks.length > 0 && <span>{progressPct}%</span>}
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500 flex items-center gap-1.5">
-                    <Flag className="w-3 h-3" />
-                    End Date
-                  </p>
-                  <p className="text-sm text-white mt-1">
-                    {sprint.endDate ? format(new Date(sprint.endDate), "MMM d, yyyy") : "Not set"}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card className="p-10 border-dashed border-white/10 bg-card/40 text-center">

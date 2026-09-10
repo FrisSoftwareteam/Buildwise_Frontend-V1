@@ -1,15 +1,15 @@
-import { useParams } from "wouter";
-import { useGetProject, useListTasks, useListUsers, useUpdateProject } from "@workspace/api-client-react";
+import { useParams, useLocation } from "wouter";
+import { useGetProject, useListTasks, useListUsers, useUpdateProject, useDeleteProject, getListProjectsQueryKey, useListMilestones, useCreateMilestone, useUpdateMilestone, useDeleteMilestone } from "@workspace/api-client-react";
 import { Card, Badge, Button, Dialog, Input } from "@/components/ui/shared";
 import { getStatusColor, formatCurrency } from "@/lib/utils";
 import { productKindLabel, PRODUCT_KINDS, PRODUCT_STATUSES, isContinuousKind, isProductClosed, productStatusLabel } from "@/lib/product-kind";
-import { ArrowLeft, Flag, Activity, Loader2, KanbanSquare, Pencil, Users, BrainCircuit, PauseCircle, CheckCircle2, Play } from "lucide-react";
+import { ArrowLeft, Flag, Activity, Loader2, KanbanSquare, Pencil, Users, BrainCircuit, PauseCircle, CheckCircle2, Play, Clock, Trash2, ListChecks, Circle, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { useRefreshQueries } from "@/lib/refresh-queries";
 import { useAuth } from "@/context/AuthContext";
-import { canCreateSoftwareProduct, canSetProductLifecycle, canUseAiAdvisor, canWorkBoard } from "@/lib/software-roles";
+import { canCreateSoftwareProduct, canManageProjectLifecycle, canDeleteProject, canUseAiAdvisor, canWorkBoard } from "@/lib/software-roles";
 import { productLifecyclePatch } from "@/lib/project-lifecycle";
 import { ContributorsEditor } from "@/components/ContributorsEditor";
 import { ProjectRequiredDocuments } from "@/components/ProjectRequiredDocuments";
@@ -20,7 +20,8 @@ import { TaskTimelineBadge } from "@/components/TaskTimelineBadge";
 export default function ProjectDetail() {
   const { user } = useAuth();
   const canEdit = canCreateSoftwareProduct(user?.role);
-  const canLifecycle = canSetProductLifecycle(user?.role);
+  const canLifecycle = canManageProjectLifecycle(user);
+  const canDelete = canDeleteProject(user);
   const showBoard = canWorkBoard(user?.role);
   const showAi = canUseAiAdvisor(user?.role);
   const { id } = useParams();
@@ -28,17 +29,53 @@ export default function ProjectDetail() {
   const canEditDevelopers = canWorkBoard(user?.role);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [contributors, setContributors] = useState<ProjectContributor[]>([]);
-  
+  const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
+  const [newMilestoneDue, setNewMilestoneDue] = useState("");
+  const [, setLocation] = useLocation();
+
   const projectQuery = useGetProject(projectId);
   const { data: project, isLoading: projLoading } = projectQuery;
   const { data: tasks, isLoading: tasksLoading } = useListTasks(projectId);
   const { data: teamMembers } = useListUsers();
   const refresh = useRefreshQueries();
+  const milestonesQuery = useListMilestones(projectId);
+  const { data: milestones, isLoading: milestonesLoading } = milestonesQuery;
+  const createMilestoneMutation = useCreateMilestone({
+    mutation: {
+      onSuccess: async () => {
+        setNewMilestoneTitle("");
+        setNewMilestoneDue("");
+        await Promise.all([refresh(milestonesQuery.queryKey), refresh(projectQuery.queryKey)]);
+      },
+    },
+  });
+  const updateMilestoneMutation = useUpdateMilestone({
+    mutation: {
+      onSuccess: async () => {
+        await Promise.all([refresh(milestonesQuery.queryKey), refresh(projectQuery.queryKey)]);
+      },
+    },
+  });
+  const deleteMilestoneMutation = useDeleteMilestone({
+    mutation: {
+      onSuccess: async () => {
+        await Promise.all([refresh(milestonesQuery.queryKey), refresh(projectQuery.queryKey)]);
+      },
+    },
+  });
   const updateProjectMutation = useUpdateProject({
     mutation: {
       onSuccess: async () => {
         setIsEditOpen(false);
         await refresh(projectQuery.queryKey);
+      },
+    },
+  });
+  const deleteProjectMutation = useDeleteProject({
+    mutation: {
+      onSuccess: async () => {
+        await refresh(getListProjectsQueryKey());
+        setLocation("/projects");
       },
     },
   });
@@ -113,6 +150,20 @@ export default function ProjectDetail() {
                 Mark completed
               </Button>
             )}
+            {canLifecycle && closed && project.status !== "on_hold" && (
+              <Button
+                variant="outline"
+                size="sm"
+                isLoading={updateProjectMutation.isPending}
+                onClick={() => updateProjectMutation.mutate({
+                  id: project.id,
+                  data: productLifecyclePatch("on_hold", project),
+                })}
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Under review
+              </Button>
+            )}
             {canLifecycle && closed && (
               <Button
                 variant="outline"
@@ -131,6 +182,23 @@ export default function ProjectDetail() {
               <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)}>
                 <Pencil className="w-4 h-4 mr-2" />
                 Edit Project
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/30"
+                isLoading={deleteProjectMutation.isPending}
+                onClick={() => {
+                  if (!window.confirm(`Delete "${project.name}"? This permanently removes the product record and its uploaded documents. This cannot be undone.`)) {
+                    return;
+                  }
+                  deleteProjectMutation.mutate({ id: project.id });
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
               </Button>
             )}
             </div>
@@ -165,6 +233,11 @@ export default function ProjectDetail() {
                   <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                     <div className="h-full bg-primary rounded-full" style={{ width: `${project.completionRate}%` }} />
                   </div>
+                  {milestones && milestones.length > 0 && (
+                    <p className="text-[11px] text-slate-500">
+                      {milestones.filter((m) => m.done).length} of {milestones.length} milestones complete
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -249,6 +322,91 @@ export default function ProjectDetail() {
             )}
           </Card>
           
+          <Card className="p-6">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white flex items-center">
+                  <ListChecks className="w-4 h-4 mr-2 text-primary" />
+                  Milestones
+                </h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  Progress above is the share of milestones marked complete.
+                </p>
+              </div>
+            </div>
+            {milestonesLoading ? (
+              <div className="flex justify-center p-6"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+            ) : (milestones && milestones.length > 0) ? (
+              <ul className="space-y-2 mb-4">
+                {milestones.map((milestone) => (
+                  <li key={milestone.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 group">
+                    <button
+                      type="button"
+                      disabled={!canEdit || updateMilestoneMutation.isPending}
+                      onClick={() => updateMilestoneMutation.mutate({ id: milestone.id, data: { done: !milestone.done } })}
+                      className="shrink-0 text-slate-400 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {milestone.done ? <CheckCircle2 className="w-5 h-5 text-primary" /> : <Circle className="w-5 h-5" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm truncate ${milestone.done ? "text-slate-500 line-through" : "text-white"}`}>
+                        {milestone.title}
+                      </p>
+                      <TaskTimelineBadge dueDate={milestone.dueDate} status={milestone.done ? "done" : undefined} />
+                    </div>
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400"
+                        isLoading={deleteMilestoneMutation.isPending}
+                        onClick={() => deleteMilestoneMutation.mutate({ id: milestone.id })}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500 mb-4">No milestones yet.</p>
+            )}
+            {canEdit && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newMilestoneTitle.trim()) return;
+                  createMilestoneMutation.mutate({
+                    projectId: project.id,
+                    data: {
+                      title: newMilestoneTitle.trim(),
+                      dueDate: newMilestoneDue || undefined,
+                    },
+                  });
+                }}
+                className="flex flex-col sm:flex-row gap-2"
+              >
+                <Input
+                  placeholder="Add a milestone…"
+                  value={newMilestoneTitle}
+                  onChange={(e) => setNewMilestoneTitle(e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  type="date"
+                  value={newMilestoneDue}
+                  onChange={(e) => setNewMilestoneDue(e.target.value)}
+                  className="sm:w-40"
+                />
+                <Button type="submit" isLoading={createMilestoneMutation.isPending} disabled={!newMilestoneTitle.trim()}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add
+                </Button>
+              </form>
+            )}
+          </Card>
+
           <Card className="p-6">
             <ProjectRequiredDocuments
               projectId={project.id}
