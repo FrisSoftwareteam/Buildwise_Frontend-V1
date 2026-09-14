@@ -404,6 +404,29 @@ export interface UpdateTaskBody {
   position?: number;
 }
 
+export interface Milestone {
+  id: number;
+  projectId: number;
+  title: string;
+  dueDate?: string | null;
+  done: boolean;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMilestoneBody {
+  title: string;
+  dueDate?: string | null;
+}
+
+export interface UpdateMilestoneBody {
+  title?: string;
+  dueDate?: string | null;
+  done?: boolean;
+  position?: number;
+}
+
 export type SprintStatus = (typeof SprintStatus)[keyof typeof SprintStatus];
 
 export const SprintStatus = {
