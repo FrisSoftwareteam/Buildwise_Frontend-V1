@@ -114,6 +114,7 @@ export interface Project {
   initialCost?: number | null;
   monthlyCost?: number | null;
   completionRate: number;
+  milestoneCount?: number;
   ownerId?: number | null;
   vendorId?: number | null;
   contributors?: ProjectContributor[];
