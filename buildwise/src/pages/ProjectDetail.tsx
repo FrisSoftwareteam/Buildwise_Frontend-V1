@@ -226,17 +226,24 @@ export default function ProjectDetail() {
                 </div>
               ) : (
                 <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-sm flex items-center"><Activity className="w-4 h-4 mr-2"/> Progress</span>
-                    <span className="text-white font-medium">{project.completionRate}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${project.completionRate}%` }} />
-                  </div>
-                  {milestones && milestones.length > 0 && (
-                    <p className="text-[11px] text-slate-500">
-                      {milestones.filter((m) => m.done).length} of {milestones.length} milestones complete
-                    </p>
+                  {milestones && milestones.length > 0 ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-sm flex items-center"><Activity className="w-4 h-4 mr-2"/> Progress</span>
+                        <span className="text-white font-medium">{project.completionRate}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${project.completionRate}%` }} />
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        {milestones.filter((m) => m.done).length} of {milestones.length} milestones complete
+                      </p>
+                    </>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-sm flex items-center"><Activity className="w-4 h-4 mr-2"/> Progress</span>
+                      <span className="text-slate-500 text-xs">No milestones added</span>
+                    </div>
                   )}
                 </>
               )}

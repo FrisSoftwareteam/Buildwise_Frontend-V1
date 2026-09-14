@@ -105,7 +105,7 @@ function ProductTable({
                 <td className="px-4 py-3 align-top">
                   {continuousActive ? (
                     <p className="text-xs text-cyan-200 text-right">Ongoing</p>
-                  ) : (
+                  ) : (project.milestoneCount ?? 0) > 0 ? (
                     <div className="flex items-center justify-end gap-3">
                       <div className="h-1.5 w-20 bg-slate-800 rounded-full overflow-hidden">
                         <div
@@ -115,6 +115,8 @@ function ProductTable({
                       </div>
                       <span className="text-xs font-medium text-white w-8 text-right">{project.completionRate}%</span>
                     </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 text-right">No milestones</p>
                   )}
                 </td>
                 <td className="px-4 py-3 align-top text-right text-white text-xs font-medium whitespace-nowrap">
