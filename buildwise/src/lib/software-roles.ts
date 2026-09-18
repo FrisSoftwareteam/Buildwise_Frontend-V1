@@ -79,8 +79,11 @@ export function canViewTeam(role?: string | null) {
   return softwareRole(role) !== "vendor";
 }
 
-export function canAccessGovernance(role?: string | null) {
-  return softwareRole(role) !== "vendor";
+// Sub-portal 2 (Governance) is disabled app-wide as of 2026-09-18.
+// Governance code (pages, routes, nav) is left in place — only access is turned off.
+// Flip this back to `return softwareRole(role) !== "vendor";` to restore it.
+export function canAccessGovernance(_role?: string | null) {
+  return false;
 }
 
 export function canRunGovernance(role?: string | null) {
