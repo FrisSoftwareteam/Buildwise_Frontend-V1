@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { ArrowLeftRight, LayoutGrid, LogOut } from "lucide-react";
+import { ArrowLeftRight, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isGeminiConfigured } from "@/lib/gemini-ai-advisor";
 import {
@@ -179,10 +179,9 @@ export function Sidebar({
               onNavigate?.();
               setLocation("/login");
             }}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-200"
+            className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-200"
           >
-            <LogOut className="h-5 w-5 text-slate-500" />
-            Sign out
+            Sign Out
           </button>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { Sidebar } from "./Sidebar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { LogOut, Menu, Search, X } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useListProjects } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/shared";
@@ -170,11 +170,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                aria-label="Sign out"
+                aria-label="Sign Out"
                 className="shrink-0 border-white/20 bg-white/5 text-white hover:bg-red-500/15 hover:text-red-200 hover:border-red-400/40"
               >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign out
+                Sign Out
               </Button>
             </div>
           </div>

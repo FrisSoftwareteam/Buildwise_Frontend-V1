@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { softwareRoleLabel } from "@/lib/software-roles";
 import { Card, Button, Badge } from "@/components/ui/shared";
-import { LogOut, Mail, Shield, Building2, UserRound } from "lucide-react";
+import { Mail, Shield, Building2, UserRound } from "lucide-react";
 
 export default function Settings() {
   const { user, logout } = useAuth();
@@ -79,8 +79,7 @@ export default function Settings() {
           onClick={handleLogout}
           className="bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30"
         >
-          <LogOut className="w-4 h-4 mr-2" />
-          Sign out
+          Sign Out
         </Button>
       </Card>
     </div>
