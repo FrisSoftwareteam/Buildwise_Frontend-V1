@@ -86,11 +86,11 @@ export function canViewTeam(role?: string | null, email?: string | null) {
   return softwareRole(role, email) !== "vendor";
 }
 
-// Sub-portal 2 (Governance) is disabled app-wide as of 2026-09-18.
+// Sub-portal 2 (Governance) is hidden for every role, including Super admin.
 // Governance code (pages, routes, nav) is left in place — only access is turned off.
 // Flip this back to `return softwareRole(role) !== "vendor";` to restore it.
-export function canAccessGovernance(_role?: string | null, email?: string | null) {
-  return isSuperAdminEmail(email);
+export function canAccessGovernance(_role?: string | null, _email?: string | null) {
+  return false;
 }
 
 export function canRunGovernance(role?: string | null, email?: string | null) {

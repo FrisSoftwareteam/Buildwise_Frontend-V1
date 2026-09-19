@@ -16,7 +16,9 @@ export default function PortalHub() {
         <p className="text-slate-400 max-w-2xl mx-auto">
           {showGovernance
             ? "Software is for building products. Governance is for running issuer meetings. They stay separate on purpose."
-            : "You are signed in as an External Software Vendor. Use the Software portal to follow products and your pipeline."}
+            : user?.role === "vendor"
+              ? "You are signed in as an External Software Vendor. Use the Software portal to follow products and your pipeline."
+              : "Use the Software portal to plan work, track products, and ship on time."}
         </p>
         {user?.role && (
           <p className="text-sm text-indigo-300">Software role: {softwareRoleLabel(user.role, user.email)}</p>
