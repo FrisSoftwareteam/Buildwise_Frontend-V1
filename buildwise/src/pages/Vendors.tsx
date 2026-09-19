@@ -7,18 +7,20 @@ import {
   useListProjects,
   useCreateVendorProject,
   useUpdateVendorProject,
+  useDeleteVendor,
 } from "@workspace/api-client-react";
 import { Card, Button, Badge, Input, Dialog } from "@/components/ui/shared";
 import { getStatusColor } from "@/lib/utils";
-import { Plus, Search, Building2, Phone, Mail, Globe, Briefcase, Send, Star } from "lucide-react";
+import { Plus, Search, Building2, Phone, Mail, Globe, Briefcase, Send, Star, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useRefreshQueries } from "@/lib/refresh-queries";
 import { useAuth } from "@/context/AuthContext";
-import { canManageVendors } from "@/lib/software-roles";
+import { canDeleteVendors, canManageVendors } from "@/lib/software-roles";
 
 export default function Vendors() {
   const { user } = useAuth();
-  const canManage = canManageVendors(user?.role);
+  const canManage = canManageVendors(user?.role, user?.email);
+  const canDelete = canDeleteVendors(user?.role, user?.email);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -32,6 +34,7 @@ export default function Vendors() {
     mailError?: string;
   } | null>(null);
   const [editingVendorId, setEditingVendorId] = useState<number | null>(null);
+  const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
   const vendorsQuery = useListVendors();
   const vendorProjectsQuery = useListVendorProjects();
   const projectsQuery = useListProjects();
@@ -58,12 +61,21 @@ export default function Vendors() {
   });
   const createVendorProjectMutation = useCreateVendorProject();
   const updateVendorProjectMutation = useUpdateVendorProject();
+  const deleteMutation = useDeleteVendor({
+    mutation: {
+      onSuccess: async () => {
+        setDeletingVendorId(null);
+        await refresh(vendorsQuery.queryKey, vendorProjectsQuery.queryKey, projectsQuery.queryKey);
+      },
+    },
+  });
 
   const filteredVendors = vendors?.filter(v => 
     v.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     v.specialization?.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const editingVendor = vendors?.find((vendor) => vendor.id === editingVendorId) || null;
+  const deletingVendor = vendors?.find((vendor) => vendor.id === deletingVendorId) || null;
 
   const activeProjectNamesByVendor = useMemo(() => {
     const projectNameById = new Map((projects || []).map((project) => [project.id, project.name]));
@@ -209,16 +221,29 @@ export default function Vendors() {
             </div>
             <div className="px-6 py-3 bg-slate-900/50 border-t border-white/5 flex justify-between items-center text-xs text-slate-500">
               <span>Added {format(new Date(vendor.createdAt), 'MMM yyyy')}</span>
-              {canManage && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
-                  onClick={() => setEditingVendorId(vendor.id)}
-                >
-                  Edit Profile
-                </Button>
-              )}
+              <div className="flex items-center gap-1">
+                {canManage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                    onClick={() => setEditingVendorId(vendor.id)}
+                  >
+                    Edit Profile
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    onClick={() => setDeletingVendorId(vendor.id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
         ))}
@@ -595,6 +620,44 @@ export default function Vendors() {
               </Button>
             </div>
           </form>
+        )}
+      </Dialog>
+      <Dialog
+        isOpen={!!deletingVendor}
+        onClose={() => {
+          if (!deleteMutation.isPending) setDeletingVendorId(null);
+        }}
+        title={deletingVendor ? `Delete ${deletingVendor.name}` : "Delete vendor"}
+      >
+        {deletingVendor && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">
+              This removes {deletingVendor.name} from the directory, unassigns their products, and they will no longer be able to sign in as this vendor.
+            </p>
+            {deleteMutation.error && (
+              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">
+                {deleteMutation.error instanceof Error ? deleteMutation.error.message : "Failed to delete vendor"}
+              </p>
+            )}
+            <div className="pt-2 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={deleteMutation.isPending}
+                onClick={() => setDeletingVendorId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="bg-red-600 hover:bg-red-500"
+                isLoading={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate({ id: deletingVendor.id })}
+              >
+                Delete vendor
+              </Button>
+            </div>
+          </div>
         )}
       </Dialog>
     </div>

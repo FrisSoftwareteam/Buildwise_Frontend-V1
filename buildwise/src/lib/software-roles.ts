@@ -74,8 +74,12 @@ export function canWorkBoard(role?: string | null) {
   return canPlanSprints(role);
 }
 
-export function canManageVendors(role?: string | null) {
-  return hasLeadAccess(role);
+export function canManageVendors(role?: string | null, email?: string | null) {
+  return hasLeadAccess(role, email);
+}
+
+export function canDeleteVendors(role?: string | null, email?: string | null) {
+  return isSuperAdminEmail(email);
 }
 
 export function canManageSoftwareTeam(role?: string | null) {
