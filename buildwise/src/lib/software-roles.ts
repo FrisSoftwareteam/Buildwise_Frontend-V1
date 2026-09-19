@@ -1,3 +1,5 @@
+export const SUPER_ADMIN_EMAIL = "ifeanyi.ayodeji@firstregistrarsnigeria.com";
+
 export const SOFTWARE_ROLES = [
   { value: "admin", label: "Admin" },
   { value: "manager", label: "Project Manager" },
@@ -15,24 +17,29 @@ const LABELS: Record<string, string> = {
   viewer: "Internal Software Developer",
 };
 
-export function softwareRole(role?: string | null): SoftwareRole {
-  if (role === "admin") return "admin";
+export function isSuperAdminEmail(email?: string | null) {
+  return (email || "").trim().toLowerCase() === SUPER_ADMIN_EMAIL;
+}
+
+export function softwareRole(role?: string | null, email?: string | null): SoftwareRole {
+  if (isSuperAdminEmail(email) || role === "admin") return "admin";
   if (role === "manager") return "manager";
   if (role === "vendor") return "vendor";
   return "developer";
 }
 
-export function softwareRoleLabel(role?: string | null) {
+export function softwareRoleLabel(role?: string | null, email?: string | null) {
+  if (isSuperAdminEmail(email)) return "Super admin";
   if (!role) return "Internal Software Developer";
   return LABELS[role] || SOFTWARE_ROLES.find((item) => item.value === role)?.label || role;
 }
 
-export function isAdmin(role?: string | null) {
-  return softwareRole(role) === "admin";
+export function isAdmin(role?: string | null, email?: string | null) {
+  return softwareRole(role, email) === "admin";
 }
 
-function hasLeadAccess(role?: string | null) {
-  const value = softwareRole(role);
+function hasLeadAccess(role?: string | null, email?: string | null) {
+  const value = softwareRole(role, email);
   return value === "admin" || value === "manager";
 }
 
@@ -50,12 +57,12 @@ type ProjectPermissionUser = { role?: string | null; email?: string | null } | n
 // including reopening one that was already marked completed (e.g. back to
 // in-progress or on hold for another look).
 export function canManageProjectLifecycle(user?: ProjectPermissionUser) {
-  return hasLeadAccess(user?.role);
+  return hasLeadAccess(user?.role, user?.email);
 }
 
 // Admins/managers can permanently delete a software product.
 export function canDeleteProject(user?: ProjectPermissionUser) {
-  return hasLeadAccess(user?.role);
+  return hasLeadAccess(user?.role, user?.email);
 }
 
 export function canPlanSprints(role?: string | null) {
@@ -75,19 +82,19 @@ export function canManageSoftwareTeam(role?: string | null) {
   return hasLeadAccess(role);
 }
 
-export function canViewTeam(role?: string | null) {
-  return softwareRole(role) !== "vendor";
+export function canViewTeam(role?: string | null, email?: string | null) {
+  return softwareRole(role, email) !== "vendor";
 }
 
 // Sub-portal 2 (Governance) is disabled app-wide as of 2026-09-18.
 // Governance code (pages, routes, nav) is left in place — only access is turned off.
 // Flip this back to `return softwareRole(role) !== "vendor";` to restore it.
-export function canAccessGovernance(_role?: string | null) {
-  return false;
+export function canAccessGovernance(_role?: string | null, email?: string | null) {
+  return isSuperAdminEmail(email);
 }
 
-export function canRunGovernance(role?: string | null) {
-  return hasLeadAccess(role);
+export function canRunGovernance(role?: string | null, email?: string | null) {
+  return isSuperAdminEmail(email) || hasLeadAccess(role, email);
 }
 
 export function canViewVendors(role?: string | null) {
@@ -99,8 +106,8 @@ export function canUseAiAdvisor(role?: string | null) {
   return softwareRole(role) !== "vendor";
 }
 
-export function softwareNavHrefs(role?: string | null): string[] {
-  switch (softwareRole(role)) {
+export function softwareNavHrefs(role?: string | null, email?: string | null): string[] {
+  switch (softwareRole(role, email)) {
     case "vendor":
       return ["/software", "/projects", "/vendors", "/vendor-pipeline"];
     case "developer":
@@ -117,23 +124,23 @@ export function canViewKpis(role?: string | null) {
 const SOFTWARE_PREFIXES = ["/software", "/projects", "/board", "/backlog", "/sprints", "/kpis", "/vendors", "/vendor-pipeline", "/ai-advisor"];
 const GOVERNANCE_PREFIXES = ["/governance", "/agm", "/operations", "/playbooks"];
 
-export function isSoftwareRouteAllowed(pathname: string, role?: string | null) {
-  const allowed = softwareNavHrefs(role);
+export function isSoftwareRouteAllowed(pathname: string, role?: string | null, email?: string | null) {
+  const allowed = softwareNavHrefs(role, email);
   return allowed.some((href) => pathname === href || pathname.startsWith(`${href}/`));
 }
 
-export function isAllowedPath(pathname: string, role?: string | null) {
+export function isAllowedPath(pathname: string, role?: string | null, email?: string | null) {
   if (pathname === "/" || pathname === "/settings" || pathname.startsWith("/settings/")) {
     return true;
   }
   if (pathname === "/team" || pathname.startsWith("/team/")) {
-    return canViewTeam(role);
+    return canViewTeam(role, email);
   }
   if (GOVERNANCE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
-    return canAccessGovernance(role);
+    return canAccessGovernance(role, email);
   }
   if (SOFTWARE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
-    return isSoftwareRouteAllowed(pathname, role);
+    return isSoftwareRouteAllowed(pathname, role, email);
   }
   return true;
 }

@@ -8,7 +8,7 @@ export default function Settings() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
 
-  const roleLabel = softwareRoleLabel(user?.role);
+  const roleLabel = softwareRoleLabel(user?.role, user?.email);
 
   const initials = user?.name?.split(" ").map((part) => part[0]).slice(0, 2).join("") || "FR";
 

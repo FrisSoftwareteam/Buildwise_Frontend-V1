@@ -17,7 +17,7 @@ export default function Dashboard() {
   const showAi = canUseAiAdvisor(user?.role);
   const showBoard = canWorkBoard(user?.role);
   const showVendors = canViewVendors(user?.role);
-  const roleLabel = softwareRoleLabel(user?.role);
+  const roleLabel = softwareRoleLabel(user?.role, user?.email);
 
   if (isLoading) {
     return <div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;

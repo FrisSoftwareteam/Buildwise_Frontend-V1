@@ -109,14 +109,14 @@ export default function Signup() {
               <span className="text-[#c4a747]">BuildWise</span>
             </h1>
             <p className="mt-4 text-slate-400 leading-relaxed">
-              Create your account to collaborate on software products, issuer meetings, vendor pipelines, and AI-powered insights.
+              Create your account to plan sprints, track tasks, and collaborate on software products with vendors and the internal team.
             </p>
           </div>
 
           <div className="space-y-3">
             {[
               "Build web, desktop, and enterprise products",
-              "Run issuer AGMs in a separate workspace",
+              "Plan sprints, tasks, and vendor work",
               "AI business analysis and advice",
               "Real-time team collaboration",
             ].map(item => (

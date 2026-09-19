@@ -334,6 +334,23 @@ export async function customFetch<T = unknown>(
 
   const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
 
+  if (typeof localStorage !== "undefined") {
+    try {
+      const stored = localStorage.getItem("buildwise_user");
+      if (stored) {
+        const user = JSON.parse(stored) as { id?: number; email?: string };
+        if (typeof user.id === "number" && !headers.has("x-buildwise-user-id")) {
+          headers.set("x-buildwise-user-id", String(user.id));
+        }
+        if (typeof user.email === "string" && user.email && !headers.has("x-buildwise-user-email")) {
+          headers.set("x-buildwise-user-email", user.email);
+        }
+      }
+    } catch {
+      // Ignore malformed local sessions.
+    }
+  }
+
   if (
     typeof init.body === "string" &&
     !headers.has("content-type") &&

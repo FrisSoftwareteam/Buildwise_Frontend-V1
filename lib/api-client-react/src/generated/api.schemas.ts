@@ -100,6 +100,23 @@ export const ProjectPriority = {
   critical: "critical",
 } as const;
 
+export type ProjectContributorPartsItem =
+  (typeof ProjectContributorPartsItem)[keyof typeof ProjectContributorPartsItem];
+
+export const ProjectContributorPartsItem = {
+  frontend: "frontend",
+  backend: "backend",
+  database: "database",
+  integration: "integration",
+  cloud_hosting: "cloud_hosting",
+} as const;
+
+export interface ProjectContributor {
+  name: string;
+  userId?: number | null;
+  parts: ProjectContributorPartsItem[];
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -114,48 +131,11 @@ export interface Project {
   initialCost?: number | null;
   monthlyCost?: number | null;
   completionRate: number;
-  milestoneCount?: number;
   ownerId?: number | null;
   vendorId?: number | null;
   contributors?: ProjectContributor[];
-  documents?: ProjectDocument[];
   createdAt: string;
   updatedAt: string;
-}
-
-export type ProjectDocumentKind =
-  (typeof ProjectDocumentKind)[keyof typeof ProjectDocumentKind];
-
-export const ProjectDocumentKind = {
-  scope: "scope",
-  manual: "manual",
-  technical: "technical",
-  sign_off: "sign_off",
-} as const;
-
-export interface ProjectDocument {
-  kind: ProjectDocumentKind;
-  fileName: string;
-  mimeType: string;
-  size: number;
-  storageName?: string;
-  uploadedAt: string;
-}
-
-export type ProjectWorkPart = (typeof ProjectWorkPart)[keyof typeof ProjectWorkPart];
-
-export const ProjectWorkPart = {
-  frontend: "frontend",
-  backend: "backend",
-  database: "database",
-  integration: "integration",
-  cloud_hosting: "cloud_hosting",
-} as const;
-
-export interface ProjectContributor {
-  name: string;
-  userId?: number | null;
-  parts: ProjectWorkPart[];
 }
 
 export type CreateProjectBodyType =
@@ -354,7 +334,7 @@ export interface CreateTaskBody {
   assigneeId?: number | null;
   reporterId?: number | null;
   storyPoints?: number | null;
-  dueDate?: string | null;
+  dueDate: string;
   label?: string | null;
 }
 
@@ -509,11 +489,13 @@ export interface Vendor {
   name: string;
   contactName?: string | null;
   contactEmail?: string | null;
+  contactEmail2?: string | null;
   contactPhone?: string | null;
   country?: string | null;
   status: VendorStatus;
   specialization?: string | null;
   registrationNumber?: string | null;
+  stars?: number;
   createdAt: string;
 }
 
@@ -531,6 +513,7 @@ export interface CreateVendorBody {
   name: string;
   contactName?: string | null;
   contactEmail?: string | null;
+  contactEmail2?: string | null;
   contactPhone?: string | null;
   country?: string | null;
   status: CreateVendorBodyStatus;
@@ -552,6 +535,7 @@ export interface UpdateVendorBody {
   name?: string;
   contactName?: string | null;
   contactEmail?: string | null;
+  contactEmail2?: string | null;
   contactPhone?: string | null;
   country?: string | null;
   status?: UpdateVendorBodyStatus;
@@ -595,7 +579,6 @@ export interface CreateVendorProjectBody {
   description?: string | null;
   estimatedValue?: number | null;
   handoverDate?: string | null;
-  projectId?: number | null;
 }
 
 export type UpdateVendorProjectBodyStage =
@@ -696,6 +679,7 @@ export const ListProjectsType = {
   desktop: "desktop",
   mobile: "mobile",
   enterprise: "enterprise",
+  continuous: "continuous",
   internal: "internal",
   vendor: "vendor",
 } as const;

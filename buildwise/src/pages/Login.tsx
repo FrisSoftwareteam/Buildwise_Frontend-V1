@@ -8,7 +8,12 @@ export default function Login() {
   const [locationSearch] = useLocation();
   const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const oauthError = params?.get("error") || "";
+  const inviteToken = params?.get("invite");
   void locationSearch;
+
+  if (inviteToken && typeof window !== "undefined") {
+    sessionStorage.setItem("buildwise_vendor_invite", inviteToken);
+  }
 
   const microsoftAvailable = hasVisibleProviders(oauthProviders);
 
@@ -36,10 +41,10 @@ export default function Login() {
           <div>
             <h1 className="text-4xl font-bold text-white leading-tight">
               Build software.<br />
-              <span className="text-[#c4a747]">Run meetings.</span>
+              <span className="text-[#c4a747]">Deliver on schedule.</span>
             </h1>
             <p className="mt-4 text-slate-400 text-lg leading-relaxed">
-              BuildWise keeps software products (web, desktop, enterprise) on a sprint board, and issuer AGMs in a separate governance workspace.
+              BuildWise keeps software products (web, desktop, enterprise) on a sprint board so teams can plan work, track tasks, and ship on time.
             </p>
           </div>
 
@@ -89,7 +94,11 @@ export default function Login() {
 
           <div>
             <h2 className="text-3xl font-bold text-white">Welcome back</h2>
-            <p className="mt-2 text-slate-400">Sign in with your First Registrars Microsoft account</p>
+            <p className="mt-2 text-slate-400">
+              {inviteToken
+                ? "Use Continue with Google on the invited Gmail account to join BuildWise."
+                : "Staff sign in with Microsoft. Vendors sign in with Google."}
+            </p>
           </div>
 
           {oauthError && (
@@ -108,12 +117,12 @@ export default function Login() {
           ) : (
             <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-300 text-sm">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              Microsoft sign-in is not yet configured for this environment. Contact your administrator.
+              Sign-in is not yet configured for this environment. Contact your administrator.
             </div>
           )}
 
           <p className="text-center text-xs text-slate-500">
-            BuildWise accounts are managed by First Registrars &amp; Investor Services. Only organizational Microsoft accounts can sign in.
+            BuildWise accounts are managed by First Registrars &amp; Investor Services.
           </p>
 
         </div>

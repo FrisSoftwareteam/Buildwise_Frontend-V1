@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { LogOut, Menu, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useListProjects } from "@workspace/api-client-react";
+import { Button } from "@/components/ui/shared";
 import { cn } from "@/lib/utils";
 import { ALL_NAV_ITEMS, PORTALS, SHARED_NAV, portalFromPath, rememberPortal } from "@/lib/portals";
 import { canRunGovernance, isAllowedPath, softwareFallbackPath, softwareNavHrefs, softwareRoleLabel } from "@/lib/software-roles";
@@ -40,8 +41,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { data: projects } = useListProjects();
   const portal = portalFromPath(location);
   const userRoleLabel = portal === "governance"
-    ? (canRunGovernance(user?.role) ? "Governance officer" : "Governance member")
-    : softwareRoleLabel(user?.role);
+    ? (canRunGovernance(user?.role, user?.email) ? "Governance officer" : "Governance member")
+    : softwareRoleLabel(user?.role, user?.email);
 
   const handleLogout = () => {
     logout();
@@ -51,12 +52,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const initials = user?.name?.split(" ").map(n => n[0]).slice(0, 2).join("") || "FR";
 
   useEffect(() => {
-    if (portal && isAllowedPath(location, user?.role)) rememberPortal(portal);
-  }, [portal, location, user?.role]);
+    if (portal && isAllowedPath(location, user?.role, user?.email)) rememberPortal(portal);
+  }, [portal, location, user?.role, user?.email]);
 
   useEffect(() => {
     if (!user) return;
-    if (!isAllowedPath(location, user.role)) {
+    if (!isAllowedPath(location, user.role, user.email)) {
       setLocation(softwareFallbackPath());
     }
   }, [location, setLocation, user]);
@@ -71,9 +72,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (query.length < 2) return [];
 
     const nav = (portal
-      ? [...(portal === "software" ? PORTALS.software.nav.filter((item) => softwareNavHrefs(user?.role).includes(item.href)) : PORTALS[portal].nav), ...SHARED_NAV]
+      ? [...(portal === "software" ? PORTALS.software.nav.filter((item) => softwareNavHrefs(user?.role, user?.email).includes(item.href)) : PORTALS[portal].nav), ...SHARED_NAV]
       : ALL_NAV_ITEMS
-    ).filter((item) => isAllowedPath(item.href, user?.role));
+    ).filter((item) => isAllowedPath(item.href, user?.role, user?.email));
     const pages = nav
       .filter((item) => item.label.toLowerCase().includes(query))
       .map((item) => ({ href: item.href, label: item.label, kind: "Page" }));
@@ -93,7 +94,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         }));
 
     return [...pages, ...projectHits].slice(0, 8);
-  }, [portal, projects, search, user?.role]);
+  }, [portal, projects, search, user?.role, user?.email]);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -164,13 +165,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
               >
                 {initials}
               </Link>
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 onClick={handleLogout}
-                title="Sign out"
-                className="h-9 w-9 rounded-full flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                aria-label="Sign out"
+                className="shrink-0 border-white/20 bg-white/5 text-white hover:bg-red-500/15 hover:text-red-200 hover:border-red-400/40"
               >
-                <LogOut className="h-4 w-4" />
-              </button>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign out
+              </Button>
             </div>
           </div>
         </header>

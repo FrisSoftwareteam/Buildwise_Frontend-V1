@@ -165,7 +165,7 @@ export default function KPIs() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-primary/10 to-indigo-500/10 p-6 rounded-2xl border border-white/5 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 blur-3xl rounded-full -mr-32 -mt-32 pointer-events-none"></div>
         <div className="z-10">
-          <p className="text-xs uppercase tracking-[0.24em] text-indigo-300">Software portal · {softwareRoleLabel(user?.role)}</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-indigo-300">Software portal · {softwareRoleLabel(user?.role, user?.email)}</p>
           <h2 className="text-2xl font-bold font-display text-white mt-1">KPIs</h2>
           <p className="text-slate-400 mt-1">
             {showLeaderboard

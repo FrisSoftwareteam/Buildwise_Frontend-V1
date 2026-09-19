@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { isSuperAdminEmail } from "@/lib/software-roles";
 
 interface AuthUser {
   id: number;
@@ -8,6 +9,7 @@ interface AuthUser {
   roles?: string[] | null;
   department: string;
   avatarUrl?: string | null;
+  vendorId?: number | null;
   createdAt: string;
 }
 
@@ -25,7 +27,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const STORAGE_KEY = "buildwise_user";
+const INVITE_KEY = "buildwise_vendor_invite";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function readInviteToken() {
+  const fromUrl = new URLSearchParams(window.location.search).get("invite");
+  if (fromUrl) {
+    sessionStorage.setItem(INVITE_KEY, fromUrl);
+    return fromUrl;
+  }
+  return sessionStorage.getItem(INVITE_KEY);
+}
 
 function decodeBase64Url(input: string) {
   const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -79,7 +91,7 @@ function normalizeStoredUser(user: AuthUser): AuthUser {
 
   return {
     ...user,
-    role: roleAliases[user.role] || user.role,
+    role: isSuperAdminEmail(user.email) ? "admin" : (roleAliases[user.role] || user.role),
   };
 }
 
@@ -169,6 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithProvider = (provider: "google" | "microsoft") => {
     const url = new URL(`${BASE}/api/auth/oauth/${provider}/start`, window.location.origin);
     url.searchParams.set("redirectTo", buildOAuthCallbackUrl());
+    if (provider === "google") {
+      const invite = readInviteToken();
+      if (invite) url.searchParams.set("invite", invite);
+    }
     window.location.assign(url.toString());
   };
 
@@ -193,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const normalizedUser = normalizeStoredUser(parsed.user);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedUser));
+      sessionStorage.removeItem(INVITE_KEY);
       setUser(normalizedUser);
       return { ok: true };
     } catch {

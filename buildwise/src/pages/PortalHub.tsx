@@ -6,7 +6,7 @@ import { canAccessGovernance, softwareRoleLabel } from "@/lib/software-roles";
 
 export default function PortalHub() {
   const { user } = useAuth();
-  const showGovernance = canAccessGovernance(user?.role);
+  const showGovernance = canAccessGovernance(user?.role, user?.email);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 py-4">
@@ -19,7 +19,7 @@ export default function PortalHub() {
             : "You are signed in as an External Software Vendor. Use the Software portal to follow products and your pipeline."}
         </p>
         {user?.role && (
-          <p className="text-sm text-indigo-300">Software role: {softwareRoleLabel(user.role)}</p>
+          <p className="text-sm text-indigo-300">Software role: {softwareRoleLabel(user.role, user.email)}</p>
         )}
       </div>
 

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { ArrowLeftRight, LayoutGrid } from "lucide-react";
+import { ArrowLeftRight, LayoutGrid, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isGeminiConfigured } from "@/lib/gemini-ai-advisor";
 import {
@@ -70,14 +70,14 @@ export function Sidebar({
   open?: boolean;
   onNavigate?: () => void;
 }) {
-  const [location] = useLocation();
-  const { user } = useAuth();
+  const [location, setLocation] = useLocation();
+  const { user, logout } = useAuth();
   const portal = portalFromPath(location);
   const otherPortal: PortalId = portal === "governance" ? "software" : "governance";
-  const softwareNav = PORTALS.software.nav.filter((item) => softwareNavHrefs(user?.role).includes(item.href));
+  const softwareNav = PORTALS.software.nav.filter((item) => softwareNavHrefs(user?.role, user?.email).includes(item.href));
   const portalNav = portal === "software" ? softwareNav : portal ? PORTALS[portal].nav : [];
-  const sharedNav = SHARED_NAV.filter((item) => item.href !== "/team" || canViewTeam(user?.role));
-  const showGovernanceSwitch = canAccessGovernance(user?.role);
+  const sharedNav = SHARED_NAV.filter((item) => item.href !== "/team" || canViewTeam(user?.role, user?.email));
+  const showGovernanceSwitch = canAccessGovernance(user?.role, user?.email);
 
   return (
     <aside className={cn(
@@ -105,7 +105,7 @@ export function Sidebar({
             >
               Software
             </Link>
-            {canAccessGovernance(user?.role) && (
+            {canAccessGovernance(user?.role, user?.email) && (
               <Link
                 href={GOVERNANCE_HOME}
                 onClick={() => { rememberPortal("governance"); onNavigate?.(); }}
@@ -124,7 +124,7 @@ export function Sidebar({
               </p>
               <p className="text-xs text-slate-500 leading-snug">{PORTALS[portal].tagline}</p>
               {portal === "software" && (
-                <p className="text-xs text-indigo-300">Role: {softwareRoleLabel(user?.role)}</p>
+                <p className="text-xs text-indigo-300">Role: {softwareRoleLabel(user?.role, user?.email)}</p>
               )}
               {(otherPortal !== "governance" || showGovernanceSwitch) && (
                 <Link
@@ -172,6 +172,18 @@ export function Sidebar({
               accent={portal === "governance" ? "governance" : "software"}
             />
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              onNavigate?.();
+              setLocation("/login");
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-200"
+          >
+            <LogOut className="h-5 w-5 text-slate-500" />
+            Sign out
+          </button>
         </div>
       </div>
     </aside>
