@@ -198,7 +198,7 @@ export function VendorMilestoneBoard({
                     </button>
                   )}
                   <div className="flex-1 min-w-0 space-y-1">
-                    <p className={`text-sm ${milestone.done ? "text-slate-500 line-through" : "text-white"}`}>{milestone.title}</p>
+                    <p className={`text-sm break-words whitespace-pre-wrap ${milestone.done ? "text-slate-500 line-through" : "text-white"}`}>{milestone.title}</p>
                     <TaskTimelineBadge dueDate={milestone.dueDate} status={milestone.done || milestone.workflow === "completed" ? "done" : undefined} />
                     {vendorOwned && (
                       <p className="text-xs text-slate-400">{workflowLabel(milestone)}</p>
@@ -224,7 +224,7 @@ export function VendorMilestoneBoard({
                   )}
                   {isVendor && canVendorEdit && (
                     <form
-                      className="flex flex-col sm:flex-row gap-2 w-full"
+                      className="flex flex-col gap-2 w-full"
                       onSubmit={(event) => {
                         event.preventDefault();
                         const form = event.currentTarget;
@@ -240,8 +240,8 @@ export function VendorMilestoneBoard({
                         });
                       }}
                     >
-                      <Input name="title" defaultValue={milestone.title} className="flex-1 h-8 text-xs" />
-                      <Input name="dueDate" type="date" defaultValue={milestone.dueDate || ""} className="sm:w-36 h-8 text-xs" />
+                      <textarea name="title" defaultValue={milestone.title} rows={3} className="w-full min-h-[4.5rem] rounded-lg border border-border bg-input/50 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+                      <Input name="dueDate" type="date" defaultValue={milestone.dueDate || ""} className="sm:w-36 h-8 text-xs shrink-0" />
                       <Button type="submit" size="sm" variant="outline" isLoading={updateMilestoneMutation.isPending}>
                         Save
                       </Button>
@@ -333,14 +333,22 @@ export function VendorMilestoneBoard({
                 data: { title: title.trim(), dueDate },
               });
             }}
-            className="flex flex-col sm:flex-row gap-2"
+            className="flex flex-col gap-2"
           >
-            <Input placeholder="Sub-milestone title" value={title} onChange={(event) => setTitle(event.target.value)} className="flex-1" />
-            <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="sm:w-40" />
-            <Button type="submit" isLoading={createMilestoneMutation.isPending} disabled={!title.trim() || !dueDate}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add
-            </Button>
+            <textarea
+              placeholder="Sub-milestone title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              rows={3}
+              className="w-full min-h-[4.5rem] rounded-lg border border-border bg-input/50 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="sm:w-44 shrink-0" />
+              <Button type="submit" isLoading={createMilestoneMutation.isPending} disabled={!title.trim() || !dueDate}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
           </form>
           <Button
             type="button"
@@ -364,13 +372,21 @@ export function VendorMilestoneBoard({
               data: { title: title.trim(), dueDate: dueDate || undefined },
             });
           }}
-          className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-white/10"
+          className="flex flex-col gap-2 pt-2 border-t border-white/10"
         >
-          <Input placeholder="Add an internal milestone…" value={title} onChange={(event) => setTitle(event.target.value)} className="flex-1" />
-          <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="sm:w-40" />
-          <Button type="submit" isLoading={createMilestoneMutation.isPending} disabled={!title.trim()}>
-            <Plus className="w-4 h-4" />
-          </Button>
+          <textarea
+            placeholder="Add an internal milestone…"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            rows={3}
+            className="w-full min-h-[4.5rem] rounded-lg border border-border bg-input/50 px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          />
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="sm:w-44 shrink-0" />
+            <Button type="submit" isLoading={createMilestoneMutation.isPending} disabled={!title.trim()}>
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
         </form>
       )}
 

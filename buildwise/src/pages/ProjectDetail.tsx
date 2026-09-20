@@ -306,8 +306,20 @@ export default function ProjectDetail() {
           </Card>
           
           <Card className="p-6">
+            <ProjectRequiredDocuments
+              projectId={project.id}
+              documents={project.documents}
+              canUpload={canEdit}
+              onChanged={() => refresh(projectQuery.queryKey)}
+            />
+          </Card>
+        </div>
+
+        {/* Right Col - Mini Board */}
+        <div className="w-full lg:w-2/3 space-y-6">
+          <Card className="p-6">
             <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-lg font-semibold text-white flex items-center">
                   <ListChecks className="w-4 h-4 mr-2 text-primary" />
                   Milestones
@@ -324,19 +336,7 @@ export default function ProjectDetail() {
             />
           </Card>
 
-          <Card className="p-6">
-            <ProjectRequiredDocuments
-              projectId={project.id}
-              documents={project.documents}
-              canUpload={canEdit}
-              onChanged={() => refresh(projectQuery.queryKey)}
-            />
-          </Card>
-        </div>
-
-        {/* Right Col - Mini Board */}
-        <div className="w-full lg:w-2/3">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center">
             <h3 className="text-xl font-semibold text-white flex items-center"><KanbanSquare className="w-5 h-5 mr-2 text-primary"/> Task Overview</h3>
             {showBoard && (
               <Link href="/board">
