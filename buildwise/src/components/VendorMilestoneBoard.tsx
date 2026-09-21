@@ -3,9 +3,9 @@ import { useCreateMilestone, useDeleteMilestone, useListMilestones, useUpdateMil
 import { Button, Input } from "@/components/ui/shared";
 import { useAuth } from "@/context/AuthContext";
 import { useRefreshQueries } from "@/lib/refresh-queries";
-import { canCreateSoftwareProduct } from "@/lib/software-roles";
+import { canCreateSoftwareProduct, isSuperAdminEmail } from "@/lib/software-roles";
 import { TaskTimelineBadge } from "@/components/TaskTimelineBadge";
-import { AlertTriangle, CheckCircle2, Circle, Loader2, Plus, Send, Star, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, Loader2, Mail, MailX, Plus, Send, Star, Trash2 } from "lucide-react";
 
 type Workflow = "draft" | "submitted" | "edit_requested" | "editable" | "review_requested" | "completed";
 
@@ -19,6 +19,12 @@ type VendorMilestone = {
   workflow?: Workflow | null;
   editRequestReason?: string | null;
   starAwarded?: boolean;
+  dueSoonAlertSentOn?: string | null;
+  dueSoonAlertError?: string | null;
+  dueTodayAlertSentOn?: string | null;
+  dueTodayAlertError?: string | null;
+  overdueAlertSentOn?: string | null;
+  overdueAlertError?: string | null;
 };
 
 function actingHeaders(user?: { id?: number; email?: string } | null) {
@@ -56,6 +62,47 @@ function isOverdue(milestone: VendorMilestone) {
   );
 }
 
+function formatMailDay(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function MailStatus({
+  label,
+  sentOn,
+  error,
+}: {
+  label: string;
+  sentOn?: string | null;
+  error?: string | null;
+}) {
+  if (!sentOn && !error) {
+    return (
+      <p className="text-xs text-slate-500 flex items-start gap-1.5">
+        <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        {label}: not sent yet
+      </p>
+    );
+  }
+  if (error && !sentOn) {
+    return (
+      <p className="text-xs text-red-300 flex items-start gap-1.5">
+        <MailX className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        {label}: failed — {error}
+      </p>
+    );
+  }
+  return (
+    <p className="text-xs text-emerald-300 flex items-start gap-1.5">
+      <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+      {label}: sent {formatMailDay(sentOn)}
+      {error ? ` (last error: ${error})` : ""}
+    </p>
+  );
+}
+
 function workflowLabel(milestone: VendorMilestone) {
   switch (milestone.workflow) {
     case "draft":
@@ -86,7 +133,7 @@ export function VendorMilestoneBoard({
 }) {
   const { user } = useAuth();
   const isVendor = user?.role === "vendor";
-  const isStaff = canCreateSoftwareProduct(user?.role);
+  const isStaff = canCreateSoftwareProduct(user?.role) || isSuperAdminEmail(user?.email);
   const refresh = useRefreshQueries();
   const milestonesQuery = useListMilestones(projectId);
   const { data: milestones, isLoading } = milestonesQuery;
@@ -123,6 +170,13 @@ export function VendorMilestoneBoard({
   const items = (milestones || []) as VendorMilestone[];
   const drafts = items.filter((item) => item.source === "vendor" && (item.workflow === "draft" || item.workflow === "editable"));
   const overdue = items.filter(isOverdue);
+  const mailFailures = items.filter(
+    (item) =>
+      item.source === "vendor" &&
+      ((item.dueSoonAlertError && !item.dueSoonAlertSentOn) ||
+        (item.dueTodayAlertError && !item.dueTodayAlertSentOn) ||
+        (item.overdueAlertError && !item.overdueAlertSentOn)),
+  );
 
   const pendingAdmin = useMemo(
     () =>
@@ -167,6 +221,22 @@ export function VendorMilestoneBoard({
         </div>
       )}
 
+      {isStaff && mailFailures.length > 0 && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+          <p className="font-semibold flex items-center gap-2">
+            <MailX className="w-4 h-4" />
+            Vendor mail failed for {mailFailures.length} milestone{mailFailures.length === 1 ? "" : "s"}
+          </p>
+          <ul className="mt-2 space-y-1 text-xs">
+            {mailFailures.map((item) => (
+              <li key={item.id}>
+                {item.title}: {item.overdueAlertError || item.dueTodayAlertError || item.dueSoonAlertError}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {error && (
         <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{error}</p>
       )}
@@ -202,6 +272,14 @@ export function VendorMilestoneBoard({
                     <TaskTimelineBadge dueDate={milestone.dueDate} status={milestone.done || milestone.workflow === "completed" ? "done" : undefined} />
                     {vendorOwned && (
                       <p className="text-xs text-slate-400">{workflowLabel(milestone)}</p>
+                    )}
+                    {isStaff && vendorOwned && (
+                      <div className="mt-2 space-y-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500">Vendor mail</p>
+                        <MailStatus label="Due in 3 days" sentOn={milestone.dueSoonAlertSentOn} error={milestone.dueSoonAlertError} />
+                        <MailStatus label="Due today" sentOn={milestone.dueTodayAlertSentOn} error={milestone.dueTodayAlertError} />
+                        <MailStatus label="Overdue caution" sentOn={milestone.overdueAlertSentOn} error={milestone.overdueAlertError} />
+                      </div>
                     )}
                     {isOverdue(milestone) && (
                       <p className="text-xs font-semibold text-red-300">Missed {milestone.dueDate} — vendor needs to be called and realigned.</p>
