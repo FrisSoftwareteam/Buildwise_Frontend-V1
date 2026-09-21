@@ -263,7 +263,7 @@ export default function Vendors() {
               {inviteResult.mailError
                 ? `The invite was created, but email sending failed (${inviteResult.mailError}). Copy the full link${(inviteResult.invites?.length || 1) > 1 ? "s" : ""} and share them with the vendor.`
                 : inviteResult.smtpConfigured
-                ? "Invitation email was sent to the vendor Google account(s). PMO officers were copied."
+                ? "Invitation email was sent to the vendor. PMO officers were copied."
                 : "SMTP is not configured, so the email was logged instead of sent. Copy the full link and share it with the vendor."}
             </p>
             {inviteResult.linkWarning && (
@@ -315,7 +315,7 @@ export default function Vendors() {
                 return;
               }
               if (email2 && email2 === email) {
-                setInviteError("Use two different Google emails, or leave the second email blank.");
+                setInviteError("Use two different emails, or leave the second email blank.");
                 return;
               }
               setInviteLoading(true);
@@ -371,11 +371,11 @@ export default function Vendors() {
               <Input name="contactName" />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Vendor Google email 1</label>
+              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Vendor sign-in email 1</label>
               <Input name="email" type="email" required placeholder="pm@vendor.com" />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Vendor Google email 2 (optional)</label>
+              <label className="text-sm font-medium text-slate-300 mb-1.5 block">Vendor sign-in email 2 (optional)</label>
               <Input name="email2" type="email" placeholder="developer@vendor.com" />
               <p className="text-xs text-slate-500 mt-1">Up to two people from the same company can share this vendor account.</p>
             </div>
@@ -406,7 +406,7 @@ export default function Vendors() {
               </div>
             </div>
             <p className="text-xs text-slate-500">
-              Each email receives its own Google sign-in link. Both people see the same products, milestones, and stars. PMO officers are copied automatically.
+              Each email receives its own sign-in link. The vendor can use Microsoft or Google. Both people see the same products, milestones, and stars. PMO officers are copied automatically.
             </p>
             <div className="pt-2 flex justify-end gap-3">
               <Button type="button" variant="ghost" onClick={() => setIsInviteOpen(false)}>
@@ -595,11 +595,11 @@ export default function Vendors() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-300 mb-1.5 block">Google email 1</label>
+                <label className="text-sm font-medium text-slate-300 mb-1.5 block">Sign-in email 1</label>
                 <Input name="contactEmail" type="email" defaultValue={editingVendor.contactEmail || ""} />
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-300 mb-1.5 block">Google email 2</label>
+                <label className="text-sm font-medium text-slate-300 mb-1.5 block">Sign-in email 2</label>
                 <Input name="contactEmail2" type="email" defaultValue={editingVendor.contactEmail2 || ""} />
               </div>
             </div>

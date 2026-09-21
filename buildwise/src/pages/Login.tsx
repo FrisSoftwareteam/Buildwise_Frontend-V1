@@ -96,8 +96,8 @@ export default function Login() {
             <h2 className="text-3xl font-bold text-white">Welcome back</h2>
             <p className="mt-2 text-slate-400">
               {inviteToken
-                ? "Use Continue with Google on the invited Gmail account to join BuildWise."
-                : "Staff sign in with Microsoft. Vendors sign in with Google."}
+                ? "Use Continue with Microsoft or Continue with Google on the invited account to join BuildWise."
+                : "Staff sign in with Microsoft. Vendors sign in with Microsoft or Google."}
             </p>
           </div>
 

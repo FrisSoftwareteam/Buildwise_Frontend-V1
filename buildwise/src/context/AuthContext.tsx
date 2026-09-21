@@ -181,10 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithProvider = (provider: "google" | "microsoft") => {
     const url = new URL(`${BASE}/api/auth/oauth/${provider}/start`, window.location.origin);
     url.searchParams.set("redirectTo", buildOAuthCallbackUrl());
-    if (provider === "google") {
-      const invite = readInviteToken();
-      if (invite) url.searchParams.set("invite", invite);
-    }
+    const invite = readInviteToken();
+    if (invite) url.searchParams.set("invite", invite);
     window.location.assign(url.toString());
   };
 
