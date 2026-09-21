@@ -32,6 +32,7 @@ export default function Vendors() {
     invites?: Array<{ email: string; link: string }>;
     smtpConfigured: boolean;
     mailError?: string;
+    linkWarning?: string;
   } | null>(null);
   const [editingVendorId, setEditingVendorId] = useState<number | null>(null);
   const [deletingVendorId, setDeletingVendorId] = useState<number | null>(null);
@@ -260,29 +261,36 @@ export default function Vendors() {
           <div className="space-y-4">
             <p className="text-sm text-slate-300">
               {inviteResult.mailError
-                ? `The invite was created, but email sending failed (${inviteResult.mailError}). Copy the link${(inviteResult.invites?.length || 1) > 1 ? "s" : ""} and share them with the vendor.`
+                ? `The invite was created, but email sending failed (${inviteResult.mailError}). Copy the full link${(inviteResult.invites?.length || 1) > 1 ? "s" : ""} and share them with the vendor.`
                 : inviteResult.smtpConfigured
                 ? "Invitation email was sent to the vendor Google account(s). PMO officers were copied."
-                : "SMTP is not configured, so the email was logged instead of sent. Copy the link and share it with the vendor."}
+                : "SMTP is not configured, so the email was logged instead of sent. Copy the full link and share it with the vendor."}
             </p>
+            {inviteResult.linkWarning && (
+              <p className="text-sm text-amber-300">{inviteResult.linkWarning} Set PUBLIC_WEB_URL on the backend to your live site, for example https://your-app.vercel.app, then send the invite again.</p>
+            )}
             {(inviteResult.invites && inviteResult.invites.length > 0 ? inviteResult.invites : [{ email: "Vendor", link: inviteResult.link }]).map((invite) => (
               <div key={invite.link} className="rounded-xl border border-white/10 bg-black/30 p-3">
                 <p className="text-xs uppercase tracking-wider text-slate-500 mb-2">Sign-in link for {invite.email}</p>
-                <p className="text-sm text-white break-all">{invite.link}</p>
+                <a href={invite.link} className="text-sm text-[#c4a747] break-all underline" target="_blank" rel="noreferrer">
+                  {invite.link}
+                </a>
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(invite.link);
+                      } catch {}
+                    }}
+                  >
+                    Copy full link
+                  </Button>
+                </div>
               </div>
             ))}
             <div className="flex justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(inviteResult.link);
-                  } catch {}
-                }}
-              >
-                Copy link
-              </Button>
               <Button
                 type="button"
                 className="bg-indigo-600 hover:bg-indigo-500"
@@ -338,6 +346,7 @@ export default function Vendors() {
                   invites: Array.isArray(data.invites) ? data.invites : [{ email, link: data.link }],
                   smtpConfigured: Boolean(data.smtpConfigured),
                   mailError: typeof data.mailError === "string" ? data.mailError : undefined,
+                  linkWarning: typeof data.linkWarning === "string" ? data.linkWarning : undefined,
                 });
                 await refresh(vendorsQuery.queryKey, vendorProjectsQuery.queryKey, projectsQuery.queryKey);
               } catch (err) {
